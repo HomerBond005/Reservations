@@ -1,0 +1,11 @@
+name: Reservations
+main: com.bukkit.HomerBond005.Reservations.Reservations
+author: HomerBond005
+version: 1.2.1
+commands:
+    reservations:
+        description: Main Command.
+        usage: Type /<command> help for help.
+    res:
+        description: Main Command.
+        usage: Type /<command> help for help.
