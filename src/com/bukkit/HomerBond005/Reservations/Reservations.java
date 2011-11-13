@@ -46,6 +46,7 @@ public class Reservations extends JavaPlugin{
 						player.sendMessage(ChatColor.WHITE + "Reservations Help Message");
 						player.sendMessage(ChatColor.RED + "/res set kickmsg <message> " + ChatColor.BLUE + "Changes the kick message.");
 						player.sendMessage(ChatColor.RED + "/res set serverfullmsg <message> " + ChatColor.BLUE + "Changes the message if the server is full.");
+						player.sendMessage(ChatColor.RED + "/res set vipsorrymsg <message> " + ChatColor.BLUE + "Changes the message if a VIP can't join.");
 						return true;
 					}
 					if(args[1].equalsIgnoreCase("kickmsg")){
@@ -58,6 +59,18 @@ public class Reservations extends JavaPlugin{
 							return true;
 						}
 						setKickMsg(player, args[2]);
+						return true;
+					}
+					if(args[1].equalsIgnoreCase("vipsorrymsg")){
+						try{
+							@SuppressWarnings("unused")
+							String test = args[2];
+						}catch(ArrayIndexOutOfBoundsException e){
+							player.sendMessage(ChatColor.RED + "Please enter a message:");
+							player.sendMessage(ChatColor.RED + "/res set vipsorrymsg <message>");
+							return true;
+						}
+						setVIPSorryMsg(player, args[2]);
 						return true;
 					}
 					if(args[1].equalsIgnoreCase("serverfullmsg")){
@@ -103,6 +116,7 @@ public class Reservations extends JavaPlugin{
 				bukkitconfig.setProperty("VIPs.HomerBond005", "");
 				bukkitconfig.setProperty("KickMsg", "A VIP joined and you were randomly selected for kicking.");
 				bukkitconfig.setProperty("ServerFullMsg", "The server is full!");
+				bukkitconfig.setProperty("VIPSorryMsg", "Bukkit is so sorry, but there are no non-VIPs that could be kicked.");
 				bukkitconfig.save();
 				System.out.println("[Reservations]: VIP.yml created.");
 			}catch(IOException e){
@@ -155,6 +169,13 @@ public class Reservations extends JavaPlugin{
 		bukkitconfig.setProperty("KickMsg", message);
 		bukkitconfig.save();
 		player.sendMessage(ChatColor.GREEN + "Kick-Message set to:");
+		player.sendMessage(message);
+	}
+	private void setVIPSorryMsg(Player player, String message){
+		bukkitconfig.load();
+		bukkitconfig.setProperty("VIPSorryMsg", message);
+		bukkitconfig.save();
+		player.sendMessage(ChatColor.GREEN + "VIP-Sorry-Message set to:");
 		player.sendMessage(message);
 	}
 	private void list (Player player){
