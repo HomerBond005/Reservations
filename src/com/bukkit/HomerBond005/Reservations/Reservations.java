@@ -3,28 +3,20 @@ package com.bukkit.HomerBond005.Reservations;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
-import com.bukkit.HomerBond005.Reservations.RSPL;
 
 import org.bukkit.ChatColor;
-import org.bukkit.plugin.PluginManager;
-import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.util.config.Configuration;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
+import org.bukkit.plugin.PluginManager;
+import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.util.config.Configuration;
 import org.yaml.snakeyaml.Yaml;
 
+@SuppressWarnings("deprecation")
 public class Reservations extends JavaPlugin{
 	private final RSPL playerlistener = new RSPL(this);
 	static String mainDir = "plugins/Reservations";
@@ -46,30 +38,38 @@ public class Reservations extends JavaPlugin{
 					help(player);
 					return true;
 				}
-				if(args[0].equalsIgnoreCase("message")){
+				if(args[0].equalsIgnoreCase("set")){
 					try{
 						@SuppressWarnings("unused")
 						String test = args[1];
 					}catch(ArrayIndexOutOfBoundsException e){
 						player.sendMessage(ChatColor.WHITE + "Reservations Help Message");
-						player.sendMessage(ChatColor.RED + "/res message get               " + ChatColor.BLUE + "Show the kick message.");
-						player.sendMessage(ChatColor.RED + "/res message set <message> " + ChatColor.BLUE + "Changes the kick message.");
+						player.sendMessage(ChatColor.RED + "/res set kickmsg <message> " + ChatColor.BLUE + "Changes the kick message.");
+						player.sendMessage(ChatColor.RED + "/res set serverfullmsg <message> " + ChatColor.BLUE + "Changes the message if the server is full.");
 						return true;
 					}
-					if(args[1].equalsIgnoreCase("set")){
+					if(args[1].equalsIgnoreCase("kickmsg")){
 						try{
 							@SuppressWarnings("unused")
 							String test = args[2];
 						}catch(ArrayIndexOutOfBoundsException e){
 							player.sendMessage(ChatColor.RED + "Please enter a message:");
-							player.sendMessage(ChatColor.RED + "/res message set <message>");
+							player.sendMessage(ChatColor.RED + "/res set kickmsg <message>");
 							return true;
 						}
-						messageset(player, args[2]);
+						setKickMsg(player, args[2]);
 						return true;
 					}
-					if(args[1].equalsIgnoreCase("get")){
-						messageget(player);
+					if(args[1].equalsIgnoreCase("serverfullmsg")){
+						try{
+							@SuppressWarnings("unused")
+							String test = args[2];
+						}catch(ArrayIndexOutOfBoundsException e){
+							player.sendMessage(ChatColor.RED + "Please enter a message:");
+							player.sendMessage(ChatColor.RED + "/res set serverfullmsg <message>");
+							return true;
+						}
+						setServerFull(player, args[2]);
 						return true;
 					}
 				}
@@ -77,19 +77,10 @@ public class Reservations extends JavaPlugin{
 					list(player);
 				}
 				if(args[0].equalsIgnoreCase("add")){
-					FileInputStream input = null;
-					try {
-						input = new FileInputStream(config);
-					} catch (FileNotFoundException e){
-						e.printStackTrace();
-					}
-					@SuppressWarnings("unchecked")
-					Map<Object, Object> VIPyml = (Map<Object, Object>)yaml.load(input);
-					VIPyml.put(args[1], "");
 					bukkitconfig.load();
-					bukkitconfig.setProperty(args[1], "");
+					bukkitconfig.setProperty("VIPs." + args[1], "");
 					bukkitconfig.save();
-					player.sendMessage(ChatColor.GREEN + "Successfully added " + args[1] + " to the VIP list.");
+					player.sendMessage(ChatColor.GREEN + "Successfully added " + ChatColor.GOLD + args[1] + ChatColor.GREEN + " to the VIP list.");
 					return true;
 				}
 				if(args[0].equalsIgnoreCase("delete")){
@@ -109,32 +100,12 @@ public class Reservations extends JavaPlugin{
 		if(!(config.exists())){
 			try{
 				config.createNewFile();
-				bukkitconfig.setProperty("HomerBond005", "");
+				bukkitconfig.setProperty("VIPs.HomerBond005", "");
+				bukkitconfig.setProperty("KickMsg", "A VIP joined and you were randomly selected for kicking.");
+				bukkitconfig.setProperty("ServerFullMsg", "The server is full!");
 				bukkitconfig.save();
 				System.out.println("[Reservations]: VIP.yml created.");
 			}catch(IOException e){
-				e.printStackTrace();
-			}
-		}
-		try {
-			input = new FileInputStream(config);
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		}
-		System.out.println("[Reservations]: VIP.yml loaded.");
-		@SuppressWarnings("unchecked")
-		Map<Object, Object> VIPyml = (Map<Object, Object>)yaml.load(input);
-		int VIPs = VIPyml.size();
-		if(getServer().getMaxPlayers() < VIPs){
-			System.err.println("Error while enabling [Reservations]: The max. players size is smaller than the configured VIPs!");
-		}
-		if(!msgfile.exists()){
-			try{
-				msgfile.createNewFile();
-				msgwriter = new BufferedWriter(new FileWriter(msgfile));
-				msgwriter.write("The server is full!");
-				msgwriter.close();
-			} catch (IOException e) {
 				e.printStackTrace();
 			}
 		}
@@ -143,37 +114,24 @@ public class Reservations extends JavaPlugin{
 	public void onDisable(){
 		System.out.println("[Reservations] is disabled!");
 	}
-	public String getMessage(){
-		String msg;
-		try{
-			msgreader = new BufferedReader(new FileReader(mainDir + File.separator + "message.txt"));
-			msg = msgreader.readLine();
-			msgreader.close();
-			msg = msg.replaceAll("(&([a-f0-9]))", "\u00A7$2");
-		}catch(IOException e){
-			System.out.println("[Reservations]: Error while reading message.txt. Using 'The server is full!' for kick message.");
-			msg = "The server is full!";
-		}
-		return msg;
-	}
-	public boolean canJoin(Player player){
-		FileInputStream input = null;
-		try {
-			input = new FileInputStream(config);
-		} catch (FileNotFoundException e){
-			e.printStackTrace();
-		}
-		@SuppressWarnings("unchecked")
-		Map<Object, Object> VIPyml = (Map<Object, Object>)yaml.load(input);
-		int VIPs = VIPyml.size();
-		if(getServer().getOnlinePlayers().length >= (getServer().getMaxPlayers() - VIPs)){
-			Set<Object> names = VIPyml.keySet();
-			if(names.contains(player.getDisplayName())){
-				return true;
-			}
-			return false;
-		}else{
+	public boolean isVIP(Player player){
+		if(player.hasPermission("Reservations.VIP")){
 			return true;
+		}else{
+			bukkitconfig.load();
+			if(bukkitconfig.getString("VIPs." + player.getDisplayName(), "$%") != "$%"){
+				return true;
+			}else{
+				return false;
+			}
+		}
+	}
+	public boolean isVIP(String name){
+		bukkitconfig.load();
+		if(bukkitconfig.getString("VIPs." + name, "$%") != "$%"){
+			return true;
+		}else{
+			return false;
 		}
 	}
 	//Functions for Commands
@@ -182,35 +140,37 @@ public class Reservations extends JavaPlugin{
 		player.sendMessage(ChatColor.RED + "/res list   " + ChatColor.BLUE + "Lists all VIPs.");
 		player.sendMessage(ChatColor.RED + "/res add <player>   " + ChatColor.BLUE + "Adds a player to VIPs.");
 		player.sendMessage(ChatColor.RED + "/res delete <player>   " + ChatColor.BLUE + "Deletes a player from VIPs");
+		player.sendMessage(ChatColor.RED + "/res set kickmsg <message>   " + ChatColor.BLUE + "Changes the kick-message");
+		player.sendMessage(ChatColor.RED + "/res set serverfullmsg <message>   " + ChatColor.BLUE + "Changes the message if the server is full");
 	}
-	private void messageget(Player player){
-		player.sendMessage("Message:");
-		player.sendMessage(getMessage());
+	private void setServerFull(Player player, String message){
+		bukkitconfig.load();
+		bukkitconfig.setProperty("ServerFullMsg", message);
+		bukkitconfig.save();
+		player.sendMessage(ChatColor.GREEN + "Server-Full-Message set to:");
+		player.sendMessage(message);
 	}
-	private void messageset(Player player, String message){
-		try {
-			new File(mainDir + File.separator + "message.txt").delete();
-			new File(mainDir + File.separator + "message.txt").createNewFile();
-			msgwriter = new BufferedWriter(new FileWriter(mainDir + File.separator + "message.txt"));
-			msgwriter.write(message);
-			msgwriter.close();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		player.sendMessage(ChatColor.GREEN + "Message set to:");
-		player.sendMessage(getMessage());
+	private void setKickMsg(Player player, String message){
+		bukkitconfig.load();
+		bukkitconfig.setProperty("KickMsg", message);
+		bukkitconfig.save();
+		player.sendMessage(ChatColor.GREEN + "Kick-Message set to:");
+		player.sendMessage(message);
 	}
 	private void list (Player player){
-		FileInputStream input = null;
-		try {
-			input = new FileInputStream(config);
-		} catch (FileNotFoundException e){
-			e.printStackTrace();
+		player.sendMessage(ChatColor.GREEN + "Following players are VIPs: (Defined in VIP.yml)");
+		bukkitconfig.load();
+		Object[] VIPlist;
+		try{
+			VIPlist = bukkitconfig.getKeys("VIPs").toArray();
+		}catch(NullPointerException e){
+			player.sendMessage(ChatColor.GRAY + "No VIPs in VIP.yml");
+			return;
 		}
-		@SuppressWarnings("unchecked")
-		HashMap<Object, Object> VIPyml = (HashMap<Object, Object>)yaml.load(input);
-		player.sendMessage(ChatColor.GREEN + "Following players are VIPs:");
-		Object[] VIPlist = VIPyml.keySet().toArray();
+		if(VIPlist.length == 0){
+			player.sendMessage(ChatColor.GRAY + "No VIPs in VIP.yml");
+			return;
+		}
 		String VIPString = "";
 		for(int i = 0; i < VIPlist.length; i++){
 			if(VIPlist.length == i + 1){
@@ -222,29 +182,16 @@ public class Reservations extends JavaPlugin{
 		player.sendMessage(ChatColor.GOLD + "" + VIPString);
 	}
 	private void delete(Player player, String name){
-		FileInputStream input = null;
-		try {
-			input = new FileInputStream(config);
-		} catch (FileNotFoundException e){
-			e.printStackTrace();
-		}
-		@SuppressWarnings("unchecked")
-		HashMap<Object, Object> VIPyml = (HashMap<Object, Object>)yaml.load(input);
-		Object[] VIPlist = VIPyml.keySet().toArray();
-		Boolean isVIP = false;
-		for(int i = 0; i < VIPlist.length; i++){
-			if(name.equalsIgnoreCase(VIPlist[i].toString())){
-				isVIP = true;
-			}
-		}
+		boolean isVIP = isVIP(name);
 		if(isVIP == false){
-			player.sendMessage(ChatColor.RED + "The player " + name + " isn't a VIP!");
+			player.sendMessage(ChatColor.RED + "The player " + ChatColor.GOLD + name + ChatColor.RED + " isn't a VIP!");
+			player.sendMessage(ChatColor.RED + "If the player has the permission,you have to delete it manually");
 			return;
 		}else{
 			bukkitconfig.load();
-			bukkitconfig.removeProperty(name);
+			bukkitconfig.removeProperty("VIPs." + name);
 			bukkitconfig.save();
-			player.sendMessage(ChatColor.GREEN + "Successfully deleted " + name + " from the VIP list.");
+			player.sendMessage(ChatColor.GREEN + "Successfully deleted " + ChatColor.GOLD + name + ChatColor.GREEN + " from the VIP list.");
 		}
 	}
 }
