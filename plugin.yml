@@ -1,11 +1,12 @@
 name: Reservations
-main: com.bukkit.HomerBond005.Reservations.Reservations
+main: de.HomerBond005.Reservations.Reservations
 author: HomerBond005
-version: 1.3.1
+version: 2.0
+softdepend: [PermissionsEx, bPermissions]
 commands:
     reservations:
         description: Main Command.
         usage: Type /<command> help for help.
-    res:
+    reser:
         description: Main Command.
         usage: Type /<command> help for help.
