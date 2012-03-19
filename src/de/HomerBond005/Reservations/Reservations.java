@@ -20,19 +20,15 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import ru.tehkode.permissions.PermissionManager;
 import ru.tehkode.permissions.bukkit.PermissionsEx;
-import de.bananaco.bpermissions.api.ApiLayer;
-import de.bananaco.bpermissions.api.util.CalculableType;
 
 public class Reservations extends JavaPlugin{
 	private final RSPL playerlistener = new RSPL(this);
 	private static String mainDir = "plugins/Reservations";
 	File config = new File (mainDir + File.separator + "config.yml");
 	FileConfiguration bukkitconfig;
-	private int permSys = 0;
 	private boolean usePEXRanks;
-	private PermissionManager pexmanager;
+	PermissionsChecker pc;
 	private Random randomgen = new Random();
 	int taskID;
 	public boolean onCommand(CommandSender sender, Command command, String commandLabel, String[] args){
@@ -58,7 +54,7 @@ public class Reservations extends JavaPlugin{
 					}
 					try{
 						if(args[1].equalsIgnoreCase("kickmsg")){
-							if(!hasPermission(player, "Reservations.set.kickmsg")&&!hasPermission(player, "Reservations.set.*")&&!hasPermission(player, "Reservations.*")){
+							if(!pc.has(player, "Reservations.set.kickmsg")&&!pc.has(player, "Reservations.set.*")&&!pc.has(player, "Reservations.*")){
 								player.sendMessage(ChatColor.RED + "You don't have the permission!");
 								return true;
 							}
@@ -74,7 +70,7 @@ public class Reservations extends JavaPlugin{
 							return true;
 						}
 						if(args[1].equalsIgnoreCase("sorrymsg")){
-							if(!hasPermission(player, "Reservations.set.sorrymsg")&&!hasPermission(player, "Reservations.set.*")&&!hasPermission(player, "Reservations.*")){
+							if(!pc.has(player, "Reservations.set.sorrymsg")&&!pc.has(player, "Reservations.set.*")&&!pc.has(player, "Reservations.*")){
 								player.sendMessage(ChatColor.RED + "You don't have the permission!");
 								return true;
 							}
@@ -90,7 +86,7 @@ public class Reservations extends JavaPlugin{
 							return true;
 						}
 						if(args[1].equalsIgnoreCase("serverfullmsg")){
-							if(!hasPermission(player, "Reservations.set.serverfullmsg")&&!hasPermission(player, "Reservations.set.*")&&!hasPermission(player, "Reservations.*")){
+							if(!pc.has(player, "Reservations.set.serverfullmsg")&&!pc.has(player, "Reservations.set.*")&&!pc.has(player, "Reservations.*")){
 								player.sendMessage(ChatColor.RED + "You don't have the permission!");
 								return true;
 							}
@@ -108,14 +104,14 @@ public class Reservations extends JavaPlugin{
 					}catch(Exception e){}
 				}
 				if(args[0].equalsIgnoreCase("list")){
-					if(!hasPermission(player, "Reservations.list")&&!hasPermission(player, "Reservations.*")){
+					if(!pc.has(player, "Reservations.list")&&!pc.has(player, "Reservations.*")){
 						player.sendMessage(ChatColor.RED + "You don't have the permission!");
 						return true;
 					}
 					list(player);
 				}
 				if(args[0].equalsIgnoreCase("add")){
-					if(!hasPermission(player, "Reservations.add")&&!hasPermission(player, "Reservations.*")){
+					if(!pc.has(player, "Reservations.add")&&!pc.has(player, "Reservations.*")){
 						player.sendMessage(ChatColor.RED + "You don't have the permission!");
 						return true;
 					}
@@ -128,7 +124,7 @@ public class Reservations extends JavaPlugin{
 					return true;
 				}
 				if(args[0].equalsIgnoreCase("delete")){
-					if(!hasPermission(player, "Reservations.delete")&&!hasPermission(player, "Reservations.*")){
+					if(!pc.has(player, "Reservations.delete")&&!pc.has(player, "Reservations.*")){
 						player.sendMessage(ChatColor.RED + "You don't have the permission!");
 						return true;
 					}
@@ -181,31 +177,20 @@ public class Reservations extends JavaPlugin{
 			bukkitconfig.set("VIPSorryMsg", null);
 			bukkitconfig.set("SorryMsg", "No one was found with a lower rank. :(");
 			bukkitconfig.set("KickMsg", "Someone with a higher rank joined you were randomly selected for kicking.");
-			try{
-				bukkitconfig.save(config);
-			}catch(IOException e){}
 			System.out.println("[Reservations]: Saved new config. Please check the messages!");
 		}
-		if(bukkitconfig.getBoolean("Permissions", false)){
-			if(pm.isPluginEnabled("PermissionsEx")){
-				pexmanager = PermissionsEx.getPermissionManager();
-				permSys = 1;
-				System.out.println("[Reservations]: Using PermissionsEx");
-			}else if(pm.isPluginEnabled("bPermissions")){
-				permSys = 2;
-				System.out.println("[Reservations]: Using bPermissions");
-			}else{
-				permSys = 3;
-				System.out.println("[Reservations]: Using BukkitPermissions");
-			}
-		}else{
-			permSys = 0;
-			System.out.println("[Reservations]: Defaulting to OP-only");
+		if(!bukkitconfig.isSet("Broadcast")){
+			bukkitconfig.set("Broadcast", "[Reservations]: %lowerrank% have been kicked because %higherrank% joined.");
+			System.out.println("[Reservations]: Saved new config. Please check the messages!");
 		}
+		try{
+			bukkitconfig.save(config);
+		}catch(IOException e){}
+		pc = new PermissionsChecker(this, bukkitconfig.getBoolean("Permissions", false));
 		if(bukkitconfig.getBoolean("PEXRankSystem", false)){
 			if(pm.isPluginEnabled("PermissionsEx")){
-				if(pexmanager == null)
-					pexmanager = PermissionsEx.getPermissionManager();
+				if(pc.pexmanager == null)
+					pc.pexmanager = PermissionsEx.getPermissionManager();
 				usePEXRanks = true;
 				System.out.println("[Reservations]: Using PEX based rank system!");
 			}else{
@@ -219,7 +204,7 @@ public class Reservations extends JavaPlugin{
 		System.out.println("[Reservations] is disabled!");
 	}
 	public boolean isVIP(Player player){
-		if(hasPermission(player, "Reservations.VIP")){
+		if(pc.has(player, "Reservations.VIP")){
 			return true;
 		}else{
 			try{
@@ -315,18 +300,18 @@ public class Reservations extends JavaPlugin{
 		if(unsortedmap.size() == 0){
 			return null;
 		}
-		System.out.println("UNSORTED");
+		/*System.out.println("UNSORTED");
 		for(Entry<String, Integer> entry : unsortedmap.entrySet()){
         	System.out.println(entry.getKey() + "|" + entry.getValue());
-        }
+        }*/
 		ValueComparator bvc =  new ValueComparator(unsortedmap);
         @SuppressWarnings("unchecked")
 		TreeMap<String, Integer> sortedmap = new TreeMap<String, Integer>(bvc);
         sortedmap.putAll(unsortedmap);
-        System.out.println("SORTED");
+        /*System.out.println("SORTED");
         for(Entry<String, Integer> entry : sortedmap.entrySet()){
         	System.out.println(entry.getKey() + "|" + entry.getValue());
-        }
+        }*/
         int ownrank = getRank(joining.getName());
         List<String> possiblekickplayers = new ArrayList<String>();
         for(Entry<String, Integer> entry : sortedmap.entrySet()){
@@ -337,10 +322,10 @@ public class Reservations extends JavaPlugin{
         if(sortedmap.size() == 0){
 			return null;
 		}
-        System.out.println("SORTED lower rank");
+        /*System.out.println("SORTED lower rank");
         for(Entry<String, Integer> entry : sortedmap.entrySet()){
         	System.out.println(entry.getKey() + "|" + entry.getValue());
-        }
+        }*/
         String[] playerarray = possiblekickplayers.toArray(new String[0]);
         if(playerarray.length == 0){
         	return null;
@@ -349,25 +334,12 @@ public class Reservations extends JavaPlugin{
 	}
 	private int getRank(String player){
 		if(usePEXRanks){
-			return pexmanager.getUser(player).getOptionInteger("rank", "", bukkitconfig.getInt("defaultRank", 100));
+			return pc.pexmanager.getUser(player).getOptionInteger("rank", "", bukkitconfig.getInt("defaultRank", 100));
 		}
 		try{
 			bukkitconfig.load(config);
 		}catch (Exception e){}
 		return bukkitconfig.getInt("Ranks." + player, bukkitconfig.getInt("defaultRank", 100));
-	}
-	public boolean hasPermission(Player player, String permission){
-		if(permSys == 0){
-			return player.isOp();
-		}else if(permSys == 1){
-			return pexmanager.has(player, permission);
-		}else if(permSys == 2){
-			return ApiLayer.hasPermission(player.getWorld().getName(), CalculableType.USER, player.getName(), permission);
-		}else if(permSys == 3){
-			return hasPermission(player, permission);
-		}else{
-			return false;
-		}
 	}
 	public void cancelTask(){
 		Bukkit.getScheduler().cancelTask(taskID);
