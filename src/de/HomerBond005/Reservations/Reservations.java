@@ -32,12 +32,17 @@ public class Reservations extends JavaPlugin{
 	private Random randomgen = new Random();
 	int taskID;
 	public boolean onCommand(CommandSender sender, Command command, String commandLabel, String[] args){
-		Player player = (Player) sender;
-			if(command.getName().toLowerCase().equals("reservations")||command.getName().toLowerCase().equals("res")){
+		if(command.getName().toLowerCase().equals("reservations")){
+			if(sender instanceof Player){
+				Player player = (Player) sender;
 				try{
 					@SuppressWarnings("unused")
 					String test = args[0];
 				}catch(ArrayIndexOutOfBoundsException e){
+					help(player);
+					return true;
+				}
+				if(args[0].equalsIgnoreCase("help")){
 					help(player);
 					return true;
 				}
@@ -47,15 +52,15 @@ public class Reservations extends JavaPlugin{
 						String test = args[1];
 					}catch(ArrayIndexOutOfBoundsException e){
 						player.sendMessage(ChatColor.WHITE + "Reservations Help Message");
-						player.sendMessage(ChatColor.RED + "/res set kickmsg <message> " + ChatColor.BLUE + "Changes the kick message.");
-						player.sendMessage(ChatColor.RED + "/res set serverfullmsg <message> " + ChatColor.BLUE + "Changes the message if the server is full.");
-						player.sendMessage(ChatColor.RED + "/res set vipsorrymsg <message> " + ChatColor.BLUE + "Changes the message if a VIP can't join.");
+						player.sendMessage(ChatColor.RED + "/reser set kickmsg <message> " + ChatColor.BLUE + "Changes the kick message.");
+						player.sendMessage(ChatColor.RED + "/reser set serverfullmsg <message> " + ChatColor.BLUE + "Changes the message if the server is full.");
+						player.sendMessage(ChatColor.RED + "/reser set sorrymsg <message> " + ChatColor.BLUE + "Changes the message if someone can't join.");
 						return true;
 					}
 					try{
 						if(args[1].equalsIgnoreCase("kickmsg")){
 							if(!pc.has(player, "Reservations.set.kickmsg")&&!pc.has(player, "Reservations.set.*")&&!pc.has(player, "Reservations.*")){
-								player.sendMessage(ChatColor.RED + "You don't have the permission!");
+								pc.sendNoPermMsg(player);
 								return true;
 							}
 							try{
@@ -63,15 +68,17 @@ public class Reservations extends JavaPlugin{
 								String test = args[2];
 							}catch(ArrayIndexOutOfBoundsException e){
 								player.sendMessage(ChatColor.RED + "Please enter a message:");
-								player.sendMessage(ChatColor.RED + "/res set kickmsg <message>");
+								player.sendMessage(ChatColor.RED + "/reser set kickmsg <message>");
 								return true;
 							}
-							setKickMsg(player, args[2]);
+							setKickMsg(args[2]);
+							player.sendMessage(ChatColor.GREEN + "Kick-Message set to:");
+							player.sendMessage(args[2]);
 							return true;
 						}
 						if(args[1].equalsIgnoreCase("sorrymsg")){
 							if(!pc.has(player, "Reservations.set.sorrymsg")&&!pc.has(player, "Reservations.set.*")&&!pc.has(player, "Reservations.*")){
-								player.sendMessage(ChatColor.RED + "You don't have the permission!");
+								pc.sendNoPermMsg(player);
 								return true;
 							}
 							try{
@@ -79,15 +86,17 @@ public class Reservations extends JavaPlugin{
 								String test = args[2];
 							}catch(ArrayIndexOutOfBoundsException e){
 								player.sendMessage(ChatColor.RED + "Please enter a message:");
-								player.sendMessage(ChatColor.RED + "/res set sorrymsg <message>");
+								player.sendMessage(ChatColor.RED + "/reser set sorrymsg <message>");
 								return true;
 							}
-							setSorryMsg(player, args[2]);
+							setSorryMsg(args[2]);
+							player.sendMessage(ChatColor.GREEN + "Sorry-Message set to:");
+							player.sendMessage(args[2]);
 							return true;
 						}
 						if(args[1].equalsIgnoreCase("serverfullmsg")){
 							if(!pc.has(player, "Reservations.set.serverfullmsg")&&!pc.has(player, "Reservations.set.*")&&!pc.has(player, "Reservations.*")){
-								player.sendMessage(ChatColor.RED + "You don't have the permission!");
+								pc.sendNoPermMsg(player);
 								return true;
 							}
 							try{
@@ -95,24 +104,27 @@ public class Reservations extends JavaPlugin{
 								String test = args[2];
 							}catch(ArrayIndexOutOfBoundsException e){
 								player.sendMessage(ChatColor.RED + "Please enter a message:");
-								player.sendMessage(ChatColor.RED + "/res set serverfullmsg <message>");
+								player.sendMessage(ChatColor.RED + "/reser set serverfullmsg <message>");
 								return true;
 							}
-							setServerFull(player, args[2]);
+							setServerFull(args[2]);
+							player.sendMessage(ChatColor.GREEN + "Server-Full-Message set to:");
+							player.sendMessage(args[2]);
 							return true;
 						}
 					}catch(Exception e){}
 				}
 				if(args[0].equalsIgnoreCase("list")){
 					if(!pc.has(player, "Reservations.list")&&!pc.has(player, "Reservations.*")){
-						player.sendMessage(ChatColor.RED + "You don't have the permission!");
+						pc.sendNoPermMsg(player);
 						return true;
 					}
-					list(player);
+					player.sendMessage(ChatColor.GREEN + "Following players are VIPs: (Defined in VIP.yml)");
+					player.sendMessage(ChatColor.GRAY + list());
 				}
 				if(args[0].equalsIgnoreCase("add")){
 					if(!pc.has(player, "Reservations.add")&&!pc.has(player, "Reservations.*")){
-						player.sendMessage(ChatColor.RED + "You don't have the permission!");
+						pc.sendNoPermMsg(player);
 						return true;
 					}
 					try{
@@ -125,13 +137,106 @@ public class Reservations extends JavaPlugin{
 				}
 				if(args[0].equalsIgnoreCase("delete")){
 					if(!pc.has(player, "Reservations.delete")&&!pc.has(player, "Reservations.*")){
-						player.sendMessage(ChatColor.RED + "You don't have the permission!");
+						pc.sendNoPermMsg(player);
 						return true;
 					}
-					delete(player, args[1]);
+					if(delete(args[1])){
+						player.sendMessage(ChatColor.GREEN + "Successfully deleted " + ChatColor.GOLD + args[1] + ChatColor.GREEN + " from the VIP list.");
+					}else{
+						player.sendMessage(ChatColor.RED + "The player " + ChatColor.GOLD + args[1] + ChatColor.RED + " isn't a VIP!");
+						player.sendMessage(ChatColor.RED + "If the player has the permission,you have to delete it manually");
+					}
 				}
-		}else{
-			player.sendMessage(ChatColor.RED + "You have to be OP to use this command!");
+			}else{
+				try{
+					@SuppressWarnings("unused")
+					String test = args[0];
+				}catch(ArrayIndexOutOfBoundsException e){
+					help();
+					return true;
+				}
+				if(args[0].equalsIgnoreCase("help")){
+					help();
+					return true;
+				}
+				if(args[0].equalsIgnoreCase("set")){
+					try{
+						@SuppressWarnings("unused")
+						String test = args[1];
+					}catch(ArrayIndexOutOfBoundsException e){
+						System.out.println("Reservations Help Message");
+						System.out.println("/reser set kickmsg <message> " + ChatColor.BLUE + "Changes the kick message.");
+						System.out.println("/reser set serverfullmsg <message> " + ChatColor.BLUE + "Changes the message if the server is full.");
+						System.out.println("/reser set sorrymsg <message> " + ChatColor.BLUE + "Changes the message if someone can't join.");
+						return true;
+					}
+					try{
+						if(args[1].equalsIgnoreCase("kickmsg")){
+							try{
+								@SuppressWarnings("unused")
+								String test = args[2];
+							}catch(ArrayIndexOutOfBoundsException e){
+								System.out.println("[Reservations]: Please enter a message:");
+								System.out.println("[Reservations]: /reser set kickmsg <message>");
+								return true;
+							}
+							setKickMsg(args[2]);
+							System.out.println("Kick-Message set to:");
+							System.out.println("[Reservations]: " + args[2]);
+							return true;
+						}
+						if(args[1].equalsIgnoreCase("sorrymsg")){
+							try{
+								@SuppressWarnings("unused")
+								String test = args[2];
+							}catch(ArrayIndexOutOfBoundsException e){
+								System.out.println("[Reservations]: Please enter a message:");
+								System.out.println("[Reservations]: /reser set sorrymsg <message>");
+								return true;
+							}
+							setSorryMsg(args[2]);
+							System.out.println("[Reservations]: Sorry-Message set to:");
+							System.out.println("[Reservations]: " + args[2]);
+							return true;
+						}
+						if(args[1].equalsIgnoreCase("serverfullmsg")){
+							try{
+								@SuppressWarnings("unused")
+								String test = args[2];
+							}catch(ArrayIndexOutOfBoundsException e){
+								System.out.println("[Reservations]: Please enter a message:");
+								System.out.println("[Reservations]: /reser set serverfullmsg <message>");
+								return true;
+							}
+							setServerFull(args[2]);
+							System.out.println("[Reservations]: Server-Full-Message set to:");
+							System.out.println("[Reservations]: " + args[2]);
+							return true;
+						}
+					}catch(Exception e){}
+				}
+				if(args[0].equalsIgnoreCase("list")){
+					System.out.println("[Reservations]: Following players are VIPs: (Defined in VIP.yml)");
+					System.out.println("[Reservations]: " + list());
+				}
+				if(args[0].equalsIgnoreCase("add")){
+					try{
+						bukkitconfig.load(config);
+						bukkitconfig.set("VIPs." + args[1], "");
+						bukkitconfig.save(config);
+					}catch(Exception e){}
+					System.out.println("[Reservations]: Successfully added " + args[1] + " to the VIP list.");
+					return true;
+				}
+				if(args[0].equalsIgnoreCase("delete")){
+					if(delete(args[1])){
+						System.out.println("[Reservations]: Successfully deleted " + args[1] + " from the VIP list.");
+					}else{
+						System.out.println("[Reservations]: The player " + args[1] + " isn't a VIP!");
+						System.out.println("[Reservations]: If the player has the permission, you have to delete it manually.");
+					}
+				}
+			}
 		}
 		return true;
 	}
@@ -222,36 +327,38 @@ public class Reservations extends JavaPlugin{
 	//Functions for Commands
 	private void help(Player player){
 		player.sendMessage(ChatColor.WHITE + "Reservations Help");
-		player.sendMessage(ChatColor.RED + "/res list   " + ChatColor.BLUE + "Lists all VIPs.");
-		player.sendMessage(ChatColor.RED + "/res add <player>   " + ChatColor.BLUE + "Adds a player to VIPs.");
-		player.sendMessage(ChatColor.RED + "/res delete <player>   " + ChatColor.BLUE + "Deletes a player from VIPs");
-		player.sendMessage(ChatColor.RED + "/res set kickmsg <message>   " + ChatColor.BLUE + "Changes the kick-message");
-		player.sendMessage(ChatColor.RED + "/res set serverfullmsg <message>   " + ChatColor.BLUE + "Changes the message if the server is full");
-		player.sendMessage(ChatColor.RED + "/res set vipsorrymsg <message> " + ChatColor.BLUE + "Changes the message if a VIP can't join.");
+		player.sendMessage(ChatColor.RED + "/reser list   " + ChatColor.BLUE + "Lists all VIPs.");
+		player.sendMessage(ChatColor.RED + "/reser add <player>   " + ChatColor.BLUE + "Adds a player to VIPs.");
+		player.sendMessage(ChatColor.RED + "/reser delete <player>   " + ChatColor.BLUE + "Deletes a player from VIPs");
+		player.sendMessage(ChatColor.RED + "/reser set kickmsg <message>   " + ChatColor.BLUE + "Changes the kick-message");
+		player.sendMessage(ChatColor.RED + "/reser set serverfullmsg <message>   " + ChatColor.BLUE + "Changes the message if the server is full");
+		player.sendMessage(ChatColor.RED + "/reser set sorrymsg <message> " + ChatColor.BLUE + "Changes the message if a someone can't join.");
 	}
-	private void setServerFull(Player player, String message) throws FileNotFoundException, IOException, InvalidConfigurationException{
+	private void help(){
+		System.out.println("Reservations Help");
+		System.out.println("/reser list   Lists all VIPs.");
+		System.out.println("/reser add <player>   Adds a player to VIPs.");
+		System.out.println("/reser delete <player>   Deletes a player from VIPs");
+		System.out.println("/reser set kickmsg <message>   Changes the kick-message");
+		System.out.println("/reser set serverfullmsg <message>   Changes the message if the server is full");
+		System.out.println("/reser set sorrymsg <message> Changes the message if someone can't join.");
+	}
+	private void setServerFull(String message) throws FileNotFoundException, IOException, InvalidConfigurationException{
 		bukkitconfig.load(config);
 		bukkitconfig.set("ServerFullMsg", message);
 		bukkitconfig.save(config);
-		player.sendMessage(ChatColor.GREEN + "Server-Full-Message set to:");
-		player.sendMessage(message);
 	}
-	private void setKickMsg(Player player, String message) throws FileNotFoundException, IOException, InvalidConfigurationException{
+	private void setKickMsg(String message) throws FileNotFoundException, IOException, InvalidConfigurationException{
 		bukkitconfig.load(config);
 		bukkitconfig.set("KickMsg", message);
 		bukkitconfig.save(config);
-		player.sendMessage(ChatColor.GREEN + "Kick-Message set to:");
-		player.sendMessage(message);
 	}
-	private void setSorryMsg(Player player, String message) throws FileNotFoundException, IOException, InvalidConfigurationException{
+	private void setSorryMsg(String message) throws FileNotFoundException, IOException, InvalidConfigurationException{
 		bukkitconfig.load(config);
 		bukkitconfig.set("SorryMsg", message);
 		bukkitconfig.save(config);
-		player.sendMessage(ChatColor.GREEN + "VIP-Sorry-Message set to:");
-		player.sendMessage(message);
 	}
-	private void list (Player player){
-		player.sendMessage(ChatColor.GREEN + "Following players are VIPs: (Defined in VIP.yml)");
+	private String list(){
 		try{
 			bukkitconfig.load(config);
 		}catch (Exception e){}
@@ -259,12 +366,10 @@ public class Reservations extends JavaPlugin{
 		try{
 			VIPlist = bukkitconfig.getConfigurationSection("VIPs").getKeys(false).toArray();
 		}catch(NullPointerException e){
-			player.sendMessage(ChatColor.GRAY + "No VIPs in VIP.yml");
-			return;
+			return "No VIPs in VIP.yml";
 		}
 		if(VIPlist.length == 0){
-			player.sendMessage(ChatColor.GRAY + "No VIPs in VIP.yml");
-			return;
+			return "No VIPs in VIP.yml";
 		}
 		String VIPString = "";
 		for(int i = 0; i < VIPlist.length; i++){
@@ -274,20 +379,20 @@ public class Reservations extends JavaPlugin{
 				VIPString += VIPlist[i] + ", ";
 			}
 		}
-		player.sendMessage(ChatColor.GOLD + "" + VIPString);
+		return VIPString;
 	}
-	private void delete(Player player, String name){
+	private boolean delete(String name){
 		if(!isVIPDefined(name)){
-			player.sendMessage(ChatColor.RED + "The player " + ChatColor.GOLD + name + ChatColor.RED + " isn't a VIP!");
-			player.sendMessage(ChatColor.RED + "If the player has the permission,you have to delete it manually");
-			return;
+			return false;
 		}else{
 			try{
 				bukkitconfig.load(config);
 				bukkitconfig.set("VIPs." + name, null);
 				bukkitconfig.save(config);
-			}catch(Exception e){return;}
-			player.sendMessage(ChatColor.GREEN + "Successfully deleted " + ChatColor.GOLD + name + ChatColor.GREEN + " from the VIP list.");
+			}catch(Exception e){
+				return false;
+			}
+			return true;
 		}
 	}
 	public Player generateKickPlayer(Player joining){

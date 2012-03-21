@@ -1,12 +1,9 @@
 name: Reservations
 main: de.HomerBond005.Reservations.Reservations
 author: HomerBond005
-version: 2.0.1
+version: 2.1
 softdepend: [PermissionsEx, bPermissions]
 commands:
     reservations:
-        description: Main Command.
-        usage: Type /<command> help for help.
-    reser:
         description: Main Command.
         usage: Type /<command> help for help.

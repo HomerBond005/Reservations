@@ -1,5 +1,6 @@
 package de.HomerBond005.Reservations;
 
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginManager;
@@ -50,6 +51,13 @@ public class PermissionsChecker{
     		return ApiLayer.hasPermission(player.getWorld().getName(), CalculableType.USER, player.getName(), perm);
     	}else{
     		return false;
+    	}
+    }
+    public void sendNoPermMsg(Player player){
+    	if(permSys == 0){
+    		player.sendMessage(ChatColor.RED + "You have to be OP to use this command!");
+    	}else{
+    		player.sendMessage(ChatColor.RED + "You don't have the necessary permission!");
     	}
     }
 }
