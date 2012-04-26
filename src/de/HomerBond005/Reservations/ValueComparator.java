@@ -1,3 +1,9 @@
+/*
+ * Copyright HomerBond005
+ * 
+ *  Published under CC BY-NC-ND 3.0
+ *  http://creativecommons.org/licenses/by-nc-nd/3.0/
+ */
 package de.HomerBond005.Reservations;
 
 import java.util.Comparator;

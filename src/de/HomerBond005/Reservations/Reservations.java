@@ -1,3 +1,9 @@
+/*
+ * Copyright HomerBond005
+ * 
+ *  Published under CC BY-NC-ND 3.0
+ *  http://creativecommons.org/licenses/by-nc-nd/3.0/
+ */
 package de.HomerBond005.Reservations;
 
 import java.io.File;
@@ -20,6 +26,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import de.HomerBond005.Permissions.PermissionsChecker;
 import ru.tehkode.permissions.bukkit.PermissionsEx;
 
 public class Reservations extends JavaPlugin{

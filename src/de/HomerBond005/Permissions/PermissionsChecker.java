@@ -1,5 +1,12 @@
-package de.HomerBond005.Reservations;
+/*
+ * Copyright HomerBond005
+ * 
+ *  Published under CC BY-NC-ND 3.0
+ *  http://creativecommons.org/licenses/by-nc-nd/3.0/
+ */
+package de.HomerBond005.Permissions;
 
+import org.anjocaido.groupmanager.GroupManager;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
@@ -10,10 +17,15 @@ import com.platymuus.bukkit.permissions.PermissionsPlugin;
 import de.bananaco.bpermissions.api.ApiLayer;
 import de.bananaco.bpermissions.api.util.CalculableType;
 
+/**
+ * Class to check permission nodes. Supports: PermissionsEx, bPermissions, GroupManager and BukkitPermissions
+ * @author HomerBond005
+ */
 public class PermissionsChecker{
 	int permSys;
-	PermissionManager pexmanager;
+	public PermissionManager pexmanager;
     PermissionsPlugin pbplugin;
+    GroupManager groupManager;
     boolean usePerm;
     Plugin main;
     public PermissionsChecker(Plugin main, boolean usePerm){
@@ -31,6 +43,10 @@ public class PermissionsChecker{
     		}else if(pm.getPlugin("bPermissions") != null){
     			System.out.println("[" + main.getName() + "]: Using bPermissions!");
     			permSys = 3;
+    		}else if(pm.getPlugin("GroupManager") != null){
+    			System.out.println("[" + main.getName() + "]: Using GroupManager!");
+    			groupManager = (GroupManager)pm.getPlugin("GroupManager");
+    			permSys = 4;
     		}else{
     			System.out.println("[" + main.getName() + "]: Using Bukkit Permissions!");
     			permSys = 1;
@@ -49,6 +65,8 @@ public class PermissionsChecker{
     		return pexmanager.has(player, perm);
     	}else if(permSys == 3){
     		return ApiLayer.hasPermission(player.getWorld().getName(), CalculableType.USER, player.getName(), perm);
+    	}else if(permSys == 4){
+    		return groupManager.getWorldsHolder().getWorldPermissionsByPlayerName(player.getName()).permission(player, perm);
     	}else{
     		return false;
     	}
