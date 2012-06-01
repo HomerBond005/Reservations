@@ -26,6 +26,7 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.mcstats.Metrics.Metrics;
 import de.HomerBond005.Permissions.PermissionsChecker;
 import ru.tehkode.permissions.bukkit.PermissionsEx;
 
@@ -36,6 +37,7 @@ public class Reservations extends JavaPlugin{
 	FileConfiguration bukkitconfig;
 	private boolean usePEXRanks;
 	PermissionsChecker pc;
+	private Metrics metrics;
 	private Random randomgen = new Random();
 	int taskID;
 	public boolean onCommand(CommandSender sender, Command command, String commandLabel, String[] args){
@@ -310,6 +312,12 @@ public class Reservations extends JavaPlugin{
 				usePEXRanks = false;
 			}
 		}
+		try{
+			metrics = new Metrics(this);
+			metrics.start();
+		}catch(IOException e){
+			System.err.println("[Reservation]: Error while enabling Metrics.");
+		}
 		System.out.println("[Reservations] is enabled!");
 	}
 	public void onDisable(){
@@ -412,18 +420,10 @@ public class Reservations extends JavaPlugin{
 		if(unsortedmap.size() == 0){
 			return null;
 		}
-		/*System.out.println("UNSORTED");
-		for(Entry<String, Integer> entry : unsortedmap.entrySet()){
-        	System.out.println(entry.getKey() + "|" + entry.getValue());
-        }*/
 		ValueComparator bvc =  new ValueComparator(unsortedmap);
         @SuppressWarnings("unchecked")
 		TreeMap<String, Integer> sortedmap = new TreeMap<String, Integer>(bvc);
         sortedmap.putAll(unsortedmap);
-        /*System.out.println("SORTED");
-        for(Entry<String, Integer> entry : sortedmap.entrySet()){
-        	System.out.println(entry.getKey() + "|" + entry.getValue());
-        }*/
         int ownrank = getRank(joining.getName());
         List<String> possiblekickplayers = new ArrayList<String>();
         for(Entry<String, Integer> entry : sortedmap.entrySet()){
@@ -434,10 +434,6 @@ public class Reservations extends JavaPlugin{
         if(sortedmap.size() == 0){
 			return null;
 		}
-        /*System.out.println("SORTED lower rank");
-        for(Entry<String, Integer> entry : sortedmap.entrySet()){
-        	System.out.println(entry.getKey() + "|" + entry.getValue());
-        }*/
         String[] playerarray = possiblekickplayers.toArray(new String[0]);
         if(playerarray.length == 0){
         	return null;
@@ -448,6 +444,17 @@ public class Reservations extends JavaPlugin{
 		if(usePEXRanks){
 			return pc.pexmanager.getUser(player).getOptionInteger("rank", "", bukkitconfig.getInt("defaultRank", 100));
 		}
+		Player pl = getServer().getPlayer(player);
+		if(pc.has(pl, "Reservations.rank.1"))
+			return 1;
+		if(pc.has(pl, "Reservations.rank.2"))
+			return 2;
+		if(pc.has(pl, "Reservations.rank.3"))
+			return 3;
+		if(pc.has(pl, "Reservations.rank.4"))
+			return 4;
+		if(pc.has(pl, "Reservations.rank.5"))
+			return 5;
 		try{
 			bukkitconfig.load(config);
 		}catch (Exception e){}
