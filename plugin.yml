@@ -1,9 +1,32 @@
 name: Reservations
 main: de.HomerBond005.Reservations.Reservations
 author: HomerBond005
-version: 2.2
-softdepend: [PermissionsEx, bPermissions]
+version: 2.2.1
+softdepend: [PermissionsEx, bPermissions, GroupManager, Vault]
 commands:
     reservations:
         description: Main Command.
         usage: Type /<command> help for help.
+permissions:
+    Reservations.rank.1:
+        description: Set the users rank to rank 1
+    Reservations.rank.2:
+        description: Set the users rank to rank 2
+    Reservations.rank.3:
+        description: Set the users rank to rank 3
+    Reservations.rank.4:
+        description: Set the users rank to rank 4
+    Reservations.rank.5:
+        description: Set the users rank to rank 5
+    Reservations.set.kickmsg:
+        description: Set the kick message
+    Reservations.set.serverfullmsg:
+        description: Set the server-full message
+    Reservations.set.sorrymsg:
+        description: Set the sorry message
+    Reservations.list:
+        description: List all VIPs
+    Reservations.add:
+        description: Add a VIP to the list
+    Reservations.delete:
+        description: Delete a VIP from the list

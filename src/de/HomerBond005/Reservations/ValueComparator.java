@@ -9,7 +9,6 @@ package de.HomerBond005.Reservations;
 import java.util.Comparator;
 import java.util.Map;
 
-
 @SuppressWarnings("rawtypes")
 class ValueComparator implements Comparator{
 	Map<String, Integer> base;

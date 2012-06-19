@@ -6,416 +6,285 @@
  */
 package de.HomerBond005.Reservations;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Random;
-import java.util.TreeMap;
-import org.bukkit.Bukkit;
+import java.util.logging.*;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.configuration.InvalidConfigurationException;
-import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.mcstats.Metrics.Metrics;
-import de.HomerBond005.Permissions.PermissionsChecker;
 import ru.tehkode.permissions.bukkit.PermissionsEx;
 
 public class Reservations extends JavaPlugin{
-	private final RSPL playerlistener = new RSPL(this);
-	private static String mainDir = "plugins/Reservations";
-	File config = new File (mainDir + File.separator + "config.yml");
-	FileConfiguration bukkitconfig;
+	private RSPL playerlistener;
 	private boolean usePEXRanks;
-	PermissionsChecker pc;
+	private PermissionsChecker pc;
 	private Metrics metrics;
-	private Random randomgen = new Random();
-	int taskID;
+	private Logger log;
+	private Updater updater;
+	
+	@Override
+	public void onEnable() {
+		log = getLogger();
+		playerlistener = new RSPL(this);
+		PluginManager pm = getServer().getPluginManager();
+		pm.registerEvents(playerlistener, this);
+		getConfig().addDefault("KickMsg", "Someone with a higher rank joined you were randomly selected for kicking.");
+		getConfig().addDefault("ServerFullMsg", "The server is full!");
+		getConfig().addDefault("SorryMsg", "No one was found with a lower rank. :(");
+		getConfig().addDefault("Permissions", true);
+		getConfig().addDefault("PEXRankSystem", false);
+		getConfig().addDefault("defaultRank", 100);
+		HashMap<String, Object> defaultRanks = new HashMap<String, Object>();
+		defaultRanks.put("HomerBond005", 1);
+		getConfig().addDefault("Ranks", defaultRanks);
+		if(!getConfig().isSet("Broadcast")){
+			getConfig().set("Broadcast", "[Reservations]: %lowerrank% have been kicked because %higherrank% joined.");
+			log.log(Level.INFO, "Saved new config. Please check the messages!");
+		}
+		HashMap<String, Object> defaultVIPS = new HashMap<String, Object>();
+		defaultVIPS.put("Admin", "");
+		getConfig().addDefault("VIPs", defaultVIPS);
+		getConfig().options().copyDefaults(true);
+		saveConfig();
+		pc = new PermissionsChecker(this, getConfig().getBoolean("Permissions", false));
+		if(getConfig().getBoolean("PEXRankSystem", false)){
+			if(pm.isPluginEnabled("PermissionsEx")){
+				if(pc.pexmanager == null)
+					pc.pexmanager = PermissionsEx.getPermissionManager();
+				usePEXRanks = true;
+				log.log(Level.INFO, "Using PEX based rank system!");
+			}else{
+				log.log(Level.WARNING, "Please enable PermissionsEx to use the PEX rank system!");
+				usePEXRanks = false;
+			}
+		}else{
+			usePEXRanks = false;
+		}
+		try{
+			metrics = new Metrics(this);
+			String submit;
+			if(usePEXRanks)
+				submit = "PEX ranks";
+			else
+				submit = "Config/Permission ranks";
+			metrics.addCustomData(new Metrics.Plotter(submit) {
+				@Override
+				public int getValue() {
+					return 1;
+				}
+			});
+			metrics.start();
+		}catch(IOException e){
+			log.log(Level.WARNING, "Error while enabling Metrics.");
+		}
+		updater = new Updater(this);
+		getServer().getPluginManager().registerEvents(updater, this);
+		log.log(Level.INFO, "is enabled!");
+	}
+	
+	@Override
+	public void onDisable(){
+		log.log(Level.INFO, "is disabled!");
+	}
+	
+	@Override
 	public boolean onCommand(CommandSender sender, Command command, String commandLabel, String[] args){
 		if(command.getName().toLowerCase().equals("reservations")){
+			if(args.length == 0)
+				args = new String[]{"help"};
+			String cmdchar = "";
+			Player player = null;
 			if(sender instanceof Player){
-				Player player = (Player) sender;
-				try{
-					@SuppressWarnings("unused")
-					String test = args[0];
-				}catch(ArrayIndexOutOfBoundsException e){
-					help(player);
-					return true;
-				}
-				if(args[0].equalsIgnoreCase("help")){
-					help(player);
-					return true;
-				}
-				if(args[0].equalsIgnoreCase("set")){
-					try{
-						@SuppressWarnings("unused")
-						String test = args[1];
-					}catch(ArrayIndexOutOfBoundsException e){
-						player.sendMessage(ChatColor.WHITE + "Reservations Help Message");
-						player.sendMessage(ChatColor.RED + "/reser set kickmsg <message> " + ChatColor.BLUE + "Changes the kick message.");
-						player.sendMessage(ChatColor.RED + "/reser set serverfullmsg <message> " + ChatColor.BLUE + "Changes the message if the server is full.");
-						player.sendMessage(ChatColor.RED + "/reser set sorrymsg <message> " + ChatColor.BLUE + "Changes the message if someone can't join.");
-						return true;
-					}
-					try{
-						if(args[1].equalsIgnoreCase("kickmsg")){
-							if(!pc.has(player, "Reservations.set.kickmsg")&&!pc.has(player, "Reservations.set.*")&&!pc.has(player, "Reservations.*")){
-								pc.sendNoPermMsg(player);
-								return true;
-							}
-							try{
-								@SuppressWarnings("unused")
-								String test = args[2];
-							}catch(ArrayIndexOutOfBoundsException e){
-								player.sendMessage(ChatColor.RED + "Please enter a message:");
-								player.sendMessage(ChatColor.RED + "/reser set kickmsg <message>");
-								return true;
-							}
-							setKickMsg(args[2]);
-							player.sendMessage(ChatColor.GREEN + "Kick-Message set to:");
-							player.sendMessage(args[2]);
-							return true;
-						}
-						if(args[1].equalsIgnoreCase("sorrymsg")){
-							if(!pc.has(player, "Reservations.set.sorrymsg")&&!pc.has(player, "Reservations.set.*")&&!pc.has(player, "Reservations.*")){
-								pc.sendNoPermMsg(player);
-								return true;
-							}
-							try{
-								@SuppressWarnings("unused")
-								String test = args[2];
-							}catch(ArrayIndexOutOfBoundsException e){
-								player.sendMessage(ChatColor.RED + "Please enter a message:");
-								player.sendMessage(ChatColor.RED + "/reser set sorrymsg <message>");
-								return true;
-							}
-							setSorryMsg(args[2]);
-							player.sendMessage(ChatColor.GREEN + "Sorry-Message set to:");
-							player.sendMessage(args[2]);
-							return true;
-						}
-						if(args[1].equalsIgnoreCase("serverfullmsg")){
-							if(!pc.has(player, "Reservations.set.serverfullmsg")&&!pc.has(player, "Reservations.set.*")&&!pc.has(player, "Reservations.*")){
-								pc.sendNoPermMsg(player);
-								return true;
-							}
-							try{
-								@SuppressWarnings("unused")
-								String test = args[2];
-							}catch(ArrayIndexOutOfBoundsException e){
-								player.sendMessage(ChatColor.RED + "Please enter a message:");
-								player.sendMessage(ChatColor.RED + "/reser set serverfullmsg <message>");
-								return true;
-							}
-							setServerFull(args[2]);
-							player.sendMessage(ChatColor.GREEN + "Server-Full-Message set to:");
-							player.sendMessage(args[2]);
-							return true;
-						}
-					}catch(Exception e){}
-				}
-				if(args[0].equalsIgnoreCase("list")){
-					if(!pc.has(player, "Reservations.list")&&!pc.has(player, "Reservations.*")){
+				player = (Player) sender;
+				cmdchar = "/";
+			}
+			if(args[0].equalsIgnoreCase("help")){
+				sender.sendMessage(ChatColor.WHITE + "Reservations Help");
+				sender.sendMessage(ChatColor.RED+cmdchar+"reser list   "+ChatColor.BLUE+"Lists all VIPs.");
+				sender.sendMessage(ChatColor.RED+cmdchar+"reser add <player>   "+ChatColor.BLUE+"Adds a player to VIPs.");
+				sender.sendMessage(ChatColor.RED+cmdchar+"reser delete <player>   "+ChatColor.BLUE+"Deletes a player from VIPs");
+				sender.sendMessage(ChatColor.RED+cmdchar+"reser set kickmsg <message>   "+ChatColor.BLUE+"Changes the kick-message");
+				sender.sendMessage(ChatColor.RED+cmdchar+"reser set serverfullmsg <message>   "+ChatColor.BLUE+"Changes the message if the server is full");
+				sender.sendMessage(ChatColor.RED+cmdchar+"reser set sorrymsg <message> "+ChatColor.BLUE+"Changes the message if a someone can't join.");
+			}else if(args[0].equalsIgnoreCase("set")){
+				if(args.length < 2){
+					sender.sendMessage(ChatColor.WHITE+"Reservations Help Message");
+					sender.sendMessage(ChatColor.RED+cmdchar+"reser set kickmsg <message> "+ChatColor.BLUE+"Changes the kick message.");
+					sender.sendMessage(ChatColor.RED+cmdchar+"reser set serverfullmsg <message> "+ChatColor.BLUE+"Changes the message if the server is full.");
+					sender.sendMessage(ChatColor.RED+cmdchar+"reser set sorrymsg <message> "+ChatColor.BLUE+"Changes the message if someone can't join.");
+				}else if(args[1].equalsIgnoreCase("kickmsg")){
+					if(!has(sender, "Reservations.set.kickmsg")){
 						pc.sendNoPermMsg(player);
 						return true;
 					}
-					player.sendMessage(ChatColor.GREEN + "Following players are VIPs: (Defined in VIP.yml)");
-					player.sendMessage(ChatColor.GRAY + list());
-				}
-				if(args[0].equalsIgnoreCase("add")){
-					if(!pc.has(player, "Reservations.add")&&!pc.has(player, "Reservations.*")){
+					if(args.length < 3){
+						sender.sendMessage(ChatColor.RED+"Please enter a message:");
+						sender.sendMessage(ChatColor.RED+cmdchar+"reser set kickmsg <message>");
+						return true;
+					}
+					setKickMsg(getLastString(args, 2));
+					sender.sendMessage(ChatColor.GREEN+"Kick-Message set to:");
+					sender.sendMessage(getLastString(args, 2));
+					return true;
+				}else if(args[1].equalsIgnoreCase("sorrymsg")){
+					if(!has(sender, "Reservations.set.sorrymsg")){
 						pc.sendNoPermMsg(player);
 						return true;
 					}
-					try{
-						bukkitconfig.load(config);
-						bukkitconfig.set("VIPs." + args[1], "");
-						bukkitconfig.save(config);
-					}catch(Exception e){}
-					player.sendMessage(ChatColor.GREEN + "Successfully added " + ChatColor.GOLD + args[1] + ChatColor.GREEN + " to the VIP list.");
+					if(args.length < 3){
+						sender.sendMessage(ChatColor.RED+"Please enter a message:");
+						sender.sendMessage(ChatColor.RED+cmdchar+"reser set sorrymsg <message>");
+						return true;
+					}
+					setSorryMsg(getLastString(args, 2));
+					sender.sendMessage(ChatColor.GREEN+"Sorry-Message set to:");
+					sender.sendMessage(getLastString(args, 2));
 					return true;
-				}
-				if(args[0].equalsIgnoreCase("delete")){
-					if(!pc.has(player, "Reservations.delete")&&!pc.has(player, "Reservations.*")){
+				}else if(args[1].equalsIgnoreCase("serverfullmsg")){
+					if(!has(sender, "Reservations.set.serverfullmsg")){
 						pc.sendNoPermMsg(player);
 						return true;
 					}
-					if(delete(args[1])){
-						player.sendMessage(ChatColor.GREEN + "Successfully deleted " + ChatColor.GOLD + args[1] + ChatColor.GREEN + " from the VIP list.");
-					}else{
-						player.sendMessage(ChatColor.RED + "The player " + ChatColor.GOLD + args[1] + ChatColor.RED + " isn't a VIP!");
-						player.sendMessage(ChatColor.RED + "If the player has the permission,you have to delete it manually");
-					}
-				}
-			}else{
-				try{
-					@SuppressWarnings("unused")
-					String test = args[0];
-				}catch(ArrayIndexOutOfBoundsException e){
-					help();
-					return true;
-				}
-				if(args[0].equalsIgnoreCase("help")){
-					help();
-					return true;
-				}
-				if(args[0].equalsIgnoreCase("set")){
-					try{
-						@SuppressWarnings("unused")
-						String test = args[1];
-					}catch(ArrayIndexOutOfBoundsException e){
-						System.out.println("Reservations Help Message");
-						System.out.println("/reser set kickmsg <message> " + ChatColor.BLUE + "Changes the kick message.");
-						System.out.println("/reser set serverfullmsg <message> " + ChatColor.BLUE + "Changes the message if the server is full.");
-						System.out.println("/reser set sorrymsg <message> " + ChatColor.BLUE + "Changes the message if someone can't join.");
+					if(args.length < 3){
+						sender.sendMessage(ChatColor.RED+"Please enter a message:");
+						sender.sendMessage(ChatColor.RED+cmdchar+"reser set serverfullmsg <message>");
 						return true;
 					}
-					try{
-						if(args[1].equalsIgnoreCase("kickmsg")){
-							try{
-								@SuppressWarnings("unused")
-								String test = args[2];
-							}catch(ArrayIndexOutOfBoundsException e){
-								System.out.println("[Reservations]: Please enter a message:");
-								System.out.println("[Reservations]: /reser set kickmsg <message>");
-								return true;
-							}
-							setKickMsg(args[2]);
-							System.out.println("Kick-Message set to:");
-							System.out.println("[Reservations]: " + args[2]);
-							return true;
-						}
-						if(args[1].equalsIgnoreCase("sorrymsg")){
-							try{
-								@SuppressWarnings("unused")
-								String test = args[2];
-							}catch(ArrayIndexOutOfBoundsException e){
-								System.out.println("[Reservations]: Please enter a message:");
-								System.out.println("[Reservations]: /reser set sorrymsg <message>");
-								return true;
-							}
-							setSorryMsg(args[2]);
-							System.out.println("[Reservations]: Sorry-Message set to:");
-							System.out.println("[Reservations]: " + args[2]);
-							return true;
-						}
-						if(args[1].equalsIgnoreCase("serverfullmsg")){
-							try{
-								@SuppressWarnings("unused")
-								String test = args[2];
-							}catch(ArrayIndexOutOfBoundsException e){
-								System.out.println("[Reservations]: Please enter a message:");
-								System.out.println("[Reservations]: /reser set serverfullmsg <message>");
-								return true;
-							}
-							setServerFull(args[2]);
-							System.out.println("[Reservations]: Server-Full-Message set to:");
-							System.out.println("[Reservations]: " + args[2]);
-							return true;
-						}
-					}catch(Exception e){}
-				}
-				if(args[0].equalsIgnoreCase("list")){
-					System.out.println("[Reservations]: Following players are VIPs: (Defined in VIP.yml)");
-					System.out.println("[Reservations]: " + list());
-				}
-				if(args[0].equalsIgnoreCase("add")){
-					try{
-						bukkitconfig.load(config);
-						bukkitconfig.set("VIPs." + args[1], "");
-						bukkitconfig.save(config);
-					}catch(Exception e){}
-					System.out.println("[Reservations]: Successfully added " + args[1] + " to the VIP list.");
+					setServerFull(getLastString(args, 2));
+					sender.sendMessage(ChatColor.GREEN+"Server-Full-Message set to:");
+					sender.sendMessage(getLastString(args, 2));
 					return true;
 				}
-				if(args[0].equalsIgnoreCase("delete")){
-					if(delete(args[1])){
-						System.out.println("[Reservations]: Successfully deleted " + args[1] + " from the VIP list.");
-					}else{
-						System.out.println("[Reservations]: The player " + args[1] + " isn't a VIP!");
-						System.out.println("[Reservations]: If the player has the permission, you have to delete it manually.");
-					}
+			}else if(args[0].equalsIgnoreCase("list")){
+				if(!has(sender, "Reservations.list")){
+					pc.sendNoPermMsg(player);
+					return true;
+				}
+				sender.sendMessage(ChatColor.GREEN+"Following players are VIPs: (Defined in config.yml)");
+				sender.sendMessage(ChatColor.GRAY+list());
+			}else if(args[0].equalsIgnoreCase("add")){
+				if(!has(sender, "Reservations.add")){
+					pc.sendNoPermMsg(player);
+					return true;
+				}
+				if(args.length < 2){
+					sender.sendMessage(ChatColor.RED+"Please enter a player:");
+					sender.sendMessage(ChatColor.RED+cmdchar+"reser add <player>");
+					return true;
+				}
+				getConfig().set("VIPs."+args[1], "");
+				saveConfig();
+				sender.sendMessage(ChatColor.GREEN+"Successfully added "+ChatColor.GOLD+args[1]+ChatColor.GREEN+" to the VIP list.");
+				return true;
+			}else if(args[0].equalsIgnoreCase("delete")){
+				if(!has(sender, "Reservations.delete")){
+					pc.sendNoPermMsg(player);
+					return true;
+				}
+				if(args.length < 2){
+					sender.sendMessage(ChatColor.RED+"Please enter a player:");
+					sender.sendMessage(ChatColor.RED+cmdchar+"reser delete <player>");
+					return true;
+				}
+				if(delete(args[1])){
+					sender.sendMessage(ChatColor.GREEN+"Successfully deleted "+ChatColor.GOLD+args[1]+ChatColor.GREEN+" from the VIP list.");
+				}else{
+					sender.sendMessage(ChatColor.RED+"The player "+ChatColor.GOLD+args[1]+ChatColor.RED+" isn't a VIP!");
+					sender.sendMessage(ChatColor.RED+"If the player has the permission,you have to delete it manually");
 				}
 			}
 		}
 		return true;
 	}
-	public void onEnable() {
-		PluginManager pm = getServer().getPluginManager();
-		pm.registerEvents(playerlistener, this);
-		new File(mainDir).mkdir();
-		File configold = new File(mainDir + File.separator + "VIP.yml");
-		if(configold.exists()){
-			configold.renameTo(config);
-			System.out.println("[Reservations]: Renamed VIP.yml to config.yml!");
-			bukkitconfig = YamlConfiguration.loadConfiguration(config);
-			bukkitconfig.set("Permissions", true);
-			try{
-				bukkitconfig.save(config);
-			}catch(IOException e){}
-		}
-		bukkitconfig = YamlConfiguration.loadConfiguration(config);
-		if(!(config.exists())){
-			try{
-				config.createNewFile();
-				bukkitconfig.set("VIPs.HomerBond005", "");
-				bukkitconfig.set("KickMsg", "Someone with a higher rank joined you were randomly selected for kicking.");
-				bukkitconfig.set("ServerFullMsg", "The server is full!");
-				bukkitconfig.set("SorryMsg", "No one was found with a lower rank. :(");
-				bukkitconfig.set("Permissions", true);
-				bukkitconfig.set("PEXRankSystem", false);
-				bukkitconfig.set("Ranks.HomerBond005", 1);
-				bukkitconfig.set("defaultRank", 100);
-				bukkitconfig.save(config);
-				System.out.println("[Reservations]: config.yml created.");
-			}catch(IOException e){
-				e.printStackTrace();
-			}
-		}
-		try{
-			bukkitconfig.load(config);
-		}catch(Exception e){}
-		if(!bukkitconfig.isSet("Ranks")){
-			bukkitconfig.set("PEXRankSystem", false);
-			bukkitconfig.set("Ranks.HomerBond005", 1);
-			bukkitconfig.set("defaultRank", 100);
-			bukkitconfig.set("VIPSorryMsg", null);
-			bukkitconfig.set("SorryMsg", "No one was found with a lower rank. :(");
-			bukkitconfig.set("KickMsg", "Someone with a higher rank joined you were randomly selected for kicking.");
-			System.out.println("[Reservations]: Saved new config. Please check the messages!");
-		}
-		if(!bukkitconfig.isSet("Broadcast")){
-			bukkitconfig.set("Broadcast", "[Reservations]: %lowerrank% have been kicked because %higherrank% joined.");
-			System.out.println("[Reservations]: Saved new config. Please check the messages!");
-		}
-		try{
-			bukkitconfig.save(config);
-		}catch(IOException e){}
-		pc = new PermissionsChecker(this, bukkitconfig.getBoolean("Permissions", false));
-		if(bukkitconfig.getBoolean("PEXRankSystem", false)){
-			if(pm.isPluginEnabled("PermissionsEx")){
-				if(pc.pexmanager == null)
-					pc.pexmanager = PermissionsEx.getPermissionManager();
-				usePEXRanks = true;
-				System.out.println("[Reservations]: Using PEX based rank system!");
-			}else{
-				System.out.println("[Reservations]: Please enable PermissionsEx to use the PEX rank system!");
-				usePEXRanks = false;
-			}
-		}
-		try{
-			metrics = new Metrics(this);
-			metrics.start();
-		}catch(IOException e){
-			System.err.println("[Reservation]: Error while enabling Metrics.");
-		}
-		System.out.println("[Reservations] is enabled!");
-	}
-	public void onDisable(){
-		System.out.println("[Reservations] is disabled!");
-	}
+	
 	public boolean isVIP(Player player){
 		if(pc.has(player, "Reservations.VIP")){
 			return true;
 		}else{
-			try{
-				bukkitconfig.load(config);
-			}catch(Exception e){}
-			return bukkitconfig.isSet("VIPs." + player.getName());
+			reloadConfig();
+			return getConfig().isSet("VIPs." + player.getName());
 		}
 	}
+	
 	private boolean isVIPDefined(String name){
-		try{
-			bukkitconfig.load(config);
-		}catch(Exception e){}
-		return bukkitconfig.isSet("VIPs." + name);
+		return getConfig().isSet("VIPs." + name);
 	}
-	//Functions for Commands
-	private void help(Player player){
-		player.sendMessage(ChatColor.WHITE + "Reservations Help");
-		player.sendMessage(ChatColor.RED + "/reser list   " + ChatColor.BLUE + "Lists all VIPs.");
-		player.sendMessage(ChatColor.RED + "/reser add <player>   " + ChatColor.BLUE + "Adds a player to VIPs.");
-		player.sendMessage(ChatColor.RED + "/reser delete <player>   " + ChatColor.BLUE + "Deletes a player from VIPs");
-		player.sendMessage(ChatColor.RED + "/reser set kickmsg <message>   " + ChatColor.BLUE + "Changes the kick-message");
-		player.sendMessage(ChatColor.RED + "/reser set serverfullmsg <message>   " + ChatColor.BLUE + "Changes the message if the server is full");
-		player.sendMessage(ChatColor.RED + "/reser set sorrymsg <message> " + ChatColor.BLUE + "Changes the message if a someone can't join.");
-	}
-	private void help(){
-		System.out.println("Reservations Help");
-		System.out.println("/reser list   Lists all VIPs.");
-		System.out.println("/reser add <player>   Adds a player to VIPs.");
-		System.out.println("/reser delete <player>   Deletes a player from VIPs");
-		System.out.println("/reser set kickmsg <message>   Changes the kick-message");
-		System.out.println("/reser set serverfullmsg <message>   Changes the message if the server is full");
-		System.out.println("/reser set sorrymsg <message> Changes the message if someone can't join.");
-	}
-	private void setServerFull(String message) throws FileNotFoundException, IOException, InvalidConfigurationException{
-		bukkitconfig.load(config);
-		bukkitconfig.set("ServerFullMsg", message);
-		bukkitconfig.save(config);
-	}
-	private void setKickMsg(String message) throws FileNotFoundException, IOException, InvalidConfigurationException{
-		bukkitconfig.load(config);
-		bukkitconfig.set("KickMsg", message);
-		bukkitconfig.save(config);
-	}
-	private void setSorryMsg(String message) throws FileNotFoundException, IOException, InvalidConfigurationException{
-		bukkitconfig.load(config);
-		bukkitconfig.set("SorryMsg", message);
-		bukkitconfig.save(config);
-	}
-	private String list(){
-		try{
-			bukkitconfig.load(config);
-		}catch (Exception e){}
-		Object[] VIPlist;
-		try{
-			VIPlist = bukkitconfig.getConfigurationSection("VIPs").getKeys(false).toArray();
-		}catch(NullPointerException e){
-			return "No VIPs in VIP.yml";
+	
+	private String getLastString(String[] arr, int start){
+		String temp = "";
+		for(int i = start; i < arr.length;i++){
+			temp += " "+arr[i];
 		}
-		if(VIPlist.length == 0){
-			return "No VIPs in VIP.yml";
+		if(temp.length() != 0)
+			temp = temp.substring(1, temp.length());
+		return temp;
+	}
+	
+	private void setServerFull(String message){
+		reloadConfig();
+		getConfig().set("ServerFullMsg", message);
+		saveConfig();
+	}
+	
+	private void setKickMsg(String message){
+		reloadConfig();
+		getConfig().set("KickMsg", message);
+		saveConfig();
+	}
+	
+	private void setSorryMsg(String message){
+		reloadConfig();
+		getConfig().set("SorryMsg", message);
+		saveConfig();
+	}
+	
+	private String list(){
+		reloadConfig();
+		String[] viplist;
+		try{
+			viplist = getConfig().getConfigurationSection("VIPs").getKeys(false).toArray(new String[0]);
+		}catch(NullPointerException e){
+			return "No VIPs in config.yml";
+		}
+		if(viplist.length == 0){
+			return "No VIPs in config.yml";
 		}
 		String VIPString = "";
-		for(int i = 0; i < VIPlist.length; i++){
-			if(VIPlist.length == i + 1){
-				VIPString += VIPlist[i];
+		for(int i = 0; i < viplist.length; i++){
+			if(viplist.length == i + 1){
+				VIPString += viplist[i];
 			}else{
-				VIPString += VIPlist[i] + ", ";
+				VIPString += viplist[i] + ", ";
 			}
 		}
 		return VIPString;
 	}
+	
 	private boolean delete(String name){
 		if(!isVIPDefined(name)){
 			return false;
 		}else{
 			try{
-				bukkitconfig.load(config);
-				bukkitconfig.set("VIPs." + name, null);
-				bukkitconfig.save(config);
+				reloadConfig();
+				getConfig().set("VIPs." + name, null);
+				saveConfig();
 			}catch(Exception e){
 				return false;
 			}
 			return true;
 		}
 	}
-	public Player generateKickPlayer(Player joining){
+	
+	Player generateKickPlayer(Player joining){
 		Map<String, Integer> unsortedmap = new HashMap<String, Integer>();
 		Player[] players = getServer().getOnlinePlayers();
 		for(Player player : players){
 			if(!isVIP(player))
-				unsortedmap.put(player.getName(), getRank(player.getName()));
+				unsortedmap.put(player.getName(), getRank(player));
 		}
 		if(unsortedmap.size() == 0){
 			return null;
@@ -424,7 +293,7 @@ public class Reservations extends JavaPlugin{
         @SuppressWarnings("unchecked")
 		TreeMap<String, Integer> sortedmap = new TreeMap<String, Integer>(bvc);
         sortedmap.putAll(unsortedmap);
-        int ownrank = getRank(joining.getName());
+        int ownrank = getRank(joining);
         List<String> possiblekickplayers = new ArrayList<String>();
         for(Entry<String, Integer> entry : sortedmap.entrySet()){
         	if(entry.getValue() > ownrank){
@@ -438,29 +307,33 @@ public class Reservations extends JavaPlugin{
         if(playerarray.length == 0){
         	return null;
         }
-        return getServer().getPlayer(playerarray[randomgen.nextInt(playerarray.length)]);
+        return getServer().getPlayer(playerarray[(int) (Math.random()*playerarray.length)]);
 	}
-	private int getRank(String player){
+	
+	public int getRank(Player player){
 		if(usePEXRanks){
-			return pc.pexmanager.getUser(player).getOptionInteger("rank", "", bukkitconfig.getInt("defaultRank", 100));
+			return pc.pexmanager.getUser(player).getOptionInteger("rank", null, getConfig().getInt("defaultRank", 100));
 		}
-		Player pl = getServer().getPlayer(player);
-		if(pc.has(pl, "Reservations.rank.1"))
+		if(pc.has(player, "Reservations.rank.1")){
 			return 1;
-		if(pc.has(pl, "Reservations.rank.2"))
+		}if(pc.has(player, "Reservations.rank.2"))
 			return 2;
-		if(pc.has(pl, "Reservations.rank.3"))
+		if(pc.has(player, "Reservations.rank.3"))
 			return 3;
-		if(pc.has(pl, "Reservations.rank.4"))
+		if(pc.has(player, "Reservations.rank.4"))
 			return 4;
-		if(pc.has(pl, "Reservations.rank.5"))
+		if(pc.has(player, "Reservations.rank.5"))
 			return 5;
-		try{
-			bukkitconfig.load(config);
-		}catch (Exception e){}
-		return bukkitconfig.getInt("Ranks." + player, bukkitconfig.getInt("defaultRank", 100));
+		reloadConfig();
+		return getConfig().getInt("Ranks." + player, getConfig().getInt("defaultRank", 100));
 	}
-	public void cancelTask(){
-		Bukkit.getScheduler().cancelTask(taskID);
+	
+	private boolean has(CommandSender sender, String perm){
+		if(sender instanceof Player){
+			Player player = (Player)sender;
+			return pc.has(player, perm);
+		}else
+			return true;
 	}
+	
 }
