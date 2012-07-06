@@ -25,7 +25,11 @@ public class Reservations extends JavaPlugin{
 	private Metrics metrics;
 	private Logger log;
 	private Updater updater;
+	private int permissionBasedRanks;
 	
+	/**
+	 * @see org.bukkit.plugin.java.JavaPlugin#onEnable()
+	 */
 	@Override
 	public void onEnable() {
 		log = getLogger();
@@ -38,13 +42,12 @@ public class Reservations extends JavaPlugin{
 		getConfig().addDefault("Permissions", true);
 		getConfig().addDefault("PEXRankSystem", false);
 		getConfig().addDefault("defaultRank", 100);
+		getConfig().addDefault("permissionBasedRanks", 10);
+		getConfig().addDefault("Broadcast", "[Reservations]: %lowerrank% have been kicked because %higherrank% joined.");
 		HashMap<String, Object> defaultRanks = new HashMap<String, Object>();
 		defaultRanks.put("HomerBond005", 1);
 		getConfig().addDefault("Ranks", defaultRanks);
-		if(!getConfig().isSet("Broadcast")){
-			getConfig().set("Broadcast", "[Reservations]: %lowerrank% have been kicked because %higherrank% joined.");
-			log.log(Level.INFO, "Saved new config. Please check the messages!");
-		}
+		permissionBasedRanks = getConfig().getInt("permissionBasedRanks");
 		HashMap<String, Object> defaultVIPS = new HashMap<String, Object>();
 		defaultVIPS.put("Admin", "");
 		getConfig().addDefault("VIPs", defaultVIPS);
@@ -86,11 +89,17 @@ public class Reservations extends JavaPlugin{
 		log.log(Level.INFO, "is enabled!");
 	}
 	
+	/**
+	 * @see org.bukkit.plugin.java.JavaPlugin#onDisable()
+	 */
 	@Override
 	public void onDisable(){
 		log.log(Level.INFO, "is disabled!");
 	}
 	
+	/**
+	 * @see org.bukkit.plugin.java.JavaPlugin#onCommand(org.bukkit.command.CommandSender, org.bukkit.command.Command, java.lang.String, java.lang.String[])
+	 */
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String commandLabel, String[] args){
 		if(command.getName().toLowerCase().equals("reservations")){
@@ -190,7 +199,7 @@ public class Reservations extends JavaPlugin{
 					sender.sendMessage(ChatColor.RED+cmdchar+"reser delete <player>");
 					return true;
 				}
-				if(delete(args[1])){
+				if(deleteVIP(args[1])){
 					sender.sendMessage(ChatColor.GREEN+"Successfully deleted "+ChatColor.GOLD+args[1]+ChatColor.GREEN+" from the VIP list.");
 				}else{
 					sender.sendMessage(ChatColor.RED+"The player "+ChatColor.GOLD+args[1]+ChatColor.RED+" isn't a VIP!");
@@ -201,19 +210,35 @@ public class Reservations extends JavaPlugin{
 		return true;
 	}
 	
+	/**
+	 * Check if a player is a VIP
+	 * @param player
+	 * @return
+	 */
 	public boolean isVIP(Player player){
 		if(pc.has(player, "Reservations.VIP")){
 			return true;
 		}else{
 			reloadConfig();
-			return getConfig().isSet("VIPs." + player.getName());
+			return isVIPDefined(player.getName());
 		}
 	}
 	
+	/**
+	 * Check if a player is defined as VIP in the config
+	 * @param name The palyer name
+	 * @return Is he defined as VIP in the config?
+	 */
 	private boolean isVIPDefined(String name){
 		return getConfig().isSet("VIPs." + name);
 	}
 	
+	/**
+	 * Take the elements after a start index from an array and separate them with a space
+	 * @param arr The array that should be handled
+	 * @param start The start index
+	 * @return A string with the parts of the array
+	 */
 	private String getLastString(String[] arr, int start){
 		String temp = "";
 		for(int i = start; i < arr.length;i++){
@@ -224,24 +249,40 @@ public class Reservations extends JavaPlugin{
 		return temp;
 	}
 	
+	/**
+	 * Set the server full message
+	 * @param message The new server full message
+	 */
 	private void setServerFull(String message){
 		reloadConfig();
 		getConfig().set("ServerFullMsg", message);
 		saveConfig();
 	}
 	
+	/**
+	 * Set the kick message
+	 * @param message The new kick message
+	 */
 	private void setKickMsg(String message){
 		reloadConfig();
 		getConfig().set("KickMsg", message);
 		saveConfig();
 	}
 	
+	/**
+	 * Set the sorry message
+	 * @param message The new sorry message
+	 */
 	private void setSorryMsg(String message){
 		reloadConfig();
 		getConfig().set("SorryMsg", message);
 		saveConfig();
 	}
 	
+	/**
+	 * List all VIPs defined in the config
+	 * @return A string with all VIPs defined in the config
+	 */
 	private String list(){
 		reloadConfig();
 		String[] viplist;
@@ -264,7 +305,12 @@ public class Reservations extends JavaPlugin{
 		return VIPString;
 	}
 	
-	private boolean delete(String name){
+	/**
+	 * Delete a VIP from the config
+	 * @param name The name of the VIP
+	 * @return Success?
+	 */
+	private boolean deleteVIP(String name){
 		if(!isVIPDefined(name)){
 			return false;
 		}else{
@@ -279,6 +325,11 @@ public class Reservations extends JavaPlugin{
 		}
 	}
 	
+	/**
+	 * Generate a player that could be kicked based on a player that tries to join
+	 * @param joining The joining player
+	 * @return A player that could be kicked or null if no one could be kicked
+	 */
 	Player generateKickPlayer(Player joining){
 		Map<String, Integer> unsortedmap = new HashMap<String, Integer>();
 		Player[] players = getServer().getOnlinePlayers();
@@ -310,24 +361,29 @@ public class Reservations extends JavaPlugin{
         return getServer().getPlayer(playerarray[(int) (Math.random()*playerarray.length)]);
 	}
 	
+	/**
+	 * Get the rank of a player
+	 * @param player A player
+	 * @return The rank of the player
+	 */
 	public int getRank(Player player){
 		if(usePEXRanks){
 			return pc.pexmanager.getUser(player).getOptionInteger("rank", null, getConfig().getInt("defaultRank", 100));
 		}
-		if(pc.has(player, "Reservations.rank.1")){
-			return 1;
-		}if(pc.has(player, "Reservations.rank.2"))
-			return 2;
-		if(pc.has(player, "Reservations.rank.3"))
-			return 3;
-		if(pc.has(player, "Reservations.rank.4"))
-			return 4;
-		if(pc.has(player, "Reservations.rank.5"))
-			return 5;
+		for(int i = 0; i < permissionBasedRanks; i++){
+			if(pc.has(player, "Reservations.rank."+(i+1)))
+				return i+1;
+		}
 		reloadConfig();
 		return getConfig().getInt("Ranks." + player, getConfig().getInt("defaultRank", 100));
 	}
 	
+	/**
+	 * Check if a CommandSender has a permission
+	 * @param sender The CommandSender that should be examined
+	 * @param perm The permission node
+	 * @return Does the CommandSender has the permission?
+	 */
 	private boolean has(CommandSender sender, String perm){
 		if(sender instanceof Player){
 			Player player = (Player)sender;

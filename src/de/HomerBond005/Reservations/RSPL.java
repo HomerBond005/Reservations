@@ -28,6 +28,8 @@ public class RSPL implements Listener{
 	
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event){
+		if(event.isCancelled())
+			return;
 		String command = event.getMessage().substring(1).split(" ")[0];
 		if(command.equalsIgnoreCase("res")){
 			if(Bukkit.getServer().getPluginCommand("res") == null){
@@ -54,6 +56,8 @@ public class RSPL implements Listener{
 	
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onServerCommand(ServerCommandEvent event){
+		if(event.getCommand().trim().length() == 0)
+			return;
 		if(event.getCommand().split(" ")[0].equalsIgnoreCase("res")){
 			if(Bukkit.getServer().getPluginCommand("res") == null){
 				event.setCommand(event.getCommand().replaceFirst("res", "reservations"));
@@ -79,6 +83,8 @@ public class RSPL implements Listener{
 	
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerLogin(final PlayerLoginEvent event){
+		if(event.getResult() != Result.ALLOWED)
+			return;
 		Player player = event.getPlayer();
 		if(player.isBanned())
 			return;

@@ -72,6 +72,7 @@ public class PermissionsChecker{
     	}
     }
     public boolean has(Player player, String perm){
+    	System.out.println(perm);
     	if(permSys == 0){
     		return player.isOp();
     	}else if(permSys == 1){
