@@ -82,8 +82,8 @@ public class RSPL implements Listener{
 	}
 	
 	@EventHandler(priority = EventPriority.HIGHEST)
-	public void onPlayerLogin(final PlayerLoginEvent event){
-		if(event.getResult() != Result.ALLOWED)
+	public void onPlayerLogin(PlayerLoginEvent event){
+		if(event.getResult() != Result.ALLOWED&&event.getResult() != Result.KICK_FULL)
 			return;
 		Player player = event.getPlayer();
 		if(player.isBanned())
