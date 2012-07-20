@@ -26,6 +26,7 @@ public class Reservations extends JavaPlugin{
 	private Logger log;
 	private Updater updater;
 	private int permissionBasedRanks;
+	private List<String> vips;
 	
 	/**
 	 * @see org.bukkit.plugin.java.JavaPlugin#onEnable()
@@ -48,11 +49,20 @@ public class Reservations extends JavaPlugin{
 		defaultRanks.put("HomerBond005", 1);
 		getConfig().addDefault("Ranks", defaultRanks);
 		permissionBasedRanks = getConfig().getInt("permissionBasedRanks");
-		HashMap<String, Object> defaultVIPS = new HashMap<String, Object>();
-		defaultVIPS.put("Admin", "");
-		getConfig().addDefault("VIPs", defaultVIPS);
+		List<String> defaultVIPs = new LinkedList<String>();
+		defaultVIPs.add("Admin");
+		defaultVIPs.add("HomerBond005");
+		getConfig().addDefault("VIPs", defaultVIPs);
 		getConfig().options().copyDefaults(true);
 		saveConfig();
+		if(getConfig().isConfigurationSection("VIPs")){
+			getConfig().set("VIPs", new LinkedList<String>(getConfig().getConfigurationSection("VIPs").getKeys(false)));
+			saveConfig();
+		}
+		vips = new LinkedList<String>();
+		for(String vip : getConfig().getStringList("VIPs")){
+			vips.add(vip.toLowerCase());
+		}
 		pc = new PermissionsChecker(this, getConfig().getBoolean("Permissions", false));
 		if(getConfig().getBoolean("PEXRankSystem", false)){
 			if(pm.isPluginEnabled("PermissionsEx")){
@@ -185,7 +195,8 @@ public class Reservations extends JavaPlugin{
 					sender.sendMessage(ChatColor.RED+cmdchar+"reser add <player>");
 					return true;
 				}
-				getConfig().set("VIPs."+args[1], "");
+				vips.add(args[1].toLowerCase());
+				getConfig().set("VIPs", vips);
 				saveConfig();
 				sender.sendMessage(ChatColor.GREEN+"Successfully added "+ChatColor.GOLD+args[1]+ChatColor.GREEN+" to the VIP list.");
 				return true;
@@ -216,12 +227,10 @@ public class Reservations extends JavaPlugin{
 	 * @return
 	 */
 	public boolean isVIP(Player player){
-		if(pc.has(player, "Reservations.VIP")){
+		if(pc.has(player, "Reservations.VIP"))
 			return true;
-		}else{
-			reloadConfig();
+		else
 			return isVIPDefined(player.getName());
-		}
 	}
 	
 	/**
@@ -230,7 +239,7 @@ public class Reservations extends JavaPlugin{
 	 * @return Is he defined as VIP in the config?
 	 */
 	private boolean isVIPDefined(String name){
-		return getConfig().isSet("VIPs." + name);
+		return vips.contains(name.toLowerCase());
 	}
 	
 	/**
@@ -285,21 +294,15 @@ public class Reservations extends JavaPlugin{
 	 */
 	private String list(){
 		reloadConfig();
-		String[] viplist;
-		try{
-			viplist = getConfig().getConfigurationSection("VIPs").getKeys(false).toArray(new String[0]);
-		}catch(NullPointerException e){
-			return "No VIPs in config.yml";
-		}
-		if(viplist.length == 0){
+		if(vips.size() == 0){
 			return "No VIPs in config.yml";
 		}
 		String VIPString = "";
-		for(int i = 0; i < viplist.length; i++){
-			if(viplist.length == i + 1){
-				VIPString += viplist[i];
+		for(int i = 0; i < vips.size(); i++){
+			if(vips.size() == i + 1){
+				VIPString += vips.get(i);
 			}else{
-				VIPString += viplist[i] + ", ";
+				VIPString += vips.get(i) + ", ";
 			}
 		}
 		return VIPString;
@@ -316,7 +319,8 @@ public class Reservations extends JavaPlugin{
 		}else{
 			try{
 				reloadConfig();
-				getConfig().set("VIPs." + name, null);
+				vips.remove(name.toLowerCase());
+				getConfig().set("VIPs", vips);
 				saveConfig();
 			}catch(Exception e){
 				return false;
