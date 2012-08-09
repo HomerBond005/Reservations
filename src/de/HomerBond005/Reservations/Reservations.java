@@ -53,6 +53,7 @@ public class Reservations extends JavaPlugin{
 		defaultVIPs.add("Admin");
 		defaultVIPs.add("HomerBond005");
 		getConfig().addDefault("VIPs", defaultVIPs);
+		getConfig().addDefault("updateReminderEnabled", true);
 		getConfig().options().copyDefaults(true);
 		saveConfig();
 		if(getConfig().isConfigurationSection("VIPs")){
@@ -94,7 +95,7 @@ public class Reservations extends JavaPlugin{
 		}catch(IOException e){
 			log.log(Level.WARNING, "Error while enabling Metrics.");
 		}
-		updater = new Updater(this);
+		updater = new Updater(this, getConfig().getBoolean("updateReminderEnabled", true));
 		getServer().getPluginManager().registerEvents(updater, this);
 		log.log(Level.INFO, "is enabled!");
 	}
@@ -113,10 +114,16 @@ public class Reservations extends JavaPlugin{
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String commandLabel, String[] args){
 		if(command.getName().toLowerCase().equals("reservations")){
+			
 			if(args.length == 0)
 				args = new String[]{"help"};
 			String cmdchar = "";
 			Player player = null;
+			String text = "abort";
+			if(!text.equals("abort")){
+				sender.sendMessage(text);
+				return true;
+			}
 			if(sender instanceof Player){
 				player = (Player) sender;
 				cmdchar = "/";

@@ -1,7 +1,7 @@
 name: Reservations
 main: de.HomerBond005.Reservations.Reservations
 author: HomerBond005
-version: 2.3.4
+version: 2.3.5
 softdepend: [PermissionsEx, bPermissions, GroupManager, Vault]
 commands:
     reservations:
