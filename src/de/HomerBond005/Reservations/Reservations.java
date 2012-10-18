@@ -27,6 +27,11 @@ public class Reservations extends JavaPlugin{
 	private Updater updater;
 	private int permissionBasedRanks;
 	private List<String> vips;
+	private boolean preventKickFromAnotherLocationLogin;
+	private String loginFromAnotherLocationMessage;
+	private String broadcastMsg;
+	private String sorryMsg;
+	private String kickMsg;
 	
 	/**
 	 * @see org.bukkit.plugin.java.JavaPlugin#onEnable()
@@ -38,13 +43,14 @@ public class Reservations extends JavaPlugin{
 		PluginManager pm = getServer().getPluginManager();
 		pm.registerEvents(playerlistener, this);
 		getConfig().addDefault("KickMsg", "Someone with a higher rank joined you were randomly selected for kicking.");
-		getConfig().addDefault("ServerFullMsg", "The server is full!");
 		getConfig().addDefault("SorryMsg", "No one was found with a lower rank. :(");
 		getConfig().addDefault("Permissions", true);
 		getConfig().addDefault("PEXRankSystem", false);
 		getConfig().addDefault("defaultRank", 100);
 		getConfig().addDefault("permissionBasedRanks", 10);
 		getConfig().addDefault("Broadcast", "[Reservations]: %lowerrank% have been kicked because %higherrank% joined.");
+		getConfig().addDefault("preventKickFromAnotherLocationLogin", true);
+		getConfig().addDefault("loginFromAnotherLocationMessage", "You are already logged in from another location!");
 		HashMap<String, Object> defaultRanks = new HashMap<String, Object>();
 		defaultRanks.put("HomerBond005", 1);
 		getConfig().addDefault("Ranks", defaultRanks);
@@ -64,6 +70,11 @@ public class Reservations extends JavaPlugin{
 		for(String vip : getConfig().getStringList("VIPs")){
 			vips.add(vip.toLowerCase());
 		}
+		kickMsg = getConfig().getString("KickMsg");
+		sorryMsg = getConfig().getString("SorryMsg");
+		broadcastMsg = getConfig().getString("Broadcast");
+		preventKickFromAnotherLocationLogin = getConfig().getBoolean("preventKickFromAnotherLocationLogin");
+		loginFromAnotherLocationMessage = getConfig().getString("loginFromAnotherLocationMessage");
 		pc = new PermissionsChecker(this, getConfig().getBoolean("Permissions", false));
 		if(getConfig().getBoolean("PEXRankSystem", false)){
 			if(pm.isPluginEnabled("PermissionsEx")){
@@ -114,33 +125,25 @@ public class Reservations extends JavaPlugin{
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String commandLabel, String[] args){
 		if(command.getName().toLowerCase().equals("reservations")){
-			
 			if(args.length == 0)
 				args = new String[]{"help"};
 			String cmdchar = "";
 			Player player = null;
-			String text = "abort";
-			if(!text.equals("abort")){
-				sender.sendMessage(text);
-				return true;
-			}
 			if(sender instanceof Player){
 				player = (Player) sender;
 				cmdchar = "/";
 			}
 			if(args[0].equalsIgnoreCase("help")){
-				sender.sendMessage(ChatColor.WHITE + "Reservations Help");
+				sender.sendMessage(ChatColor.WHITE+"Reservations Help");
 				sender.sendMessage(ChatColor.RED+cmdchar+"reser list   "+ChatColor.BLUE+"Lists all VIPs.");
 				sender.sendMessage(ChatColor.RED+cmdchar+"reser add <player>   "+ChatColor.BLUE+"Adds a player to VIPs.");
 				sender.sendMessage(ChatColor.RED+cmdchar+"reser delete <player>   "+ChatColor.BLUE+"Deletes a player from VIPs");
 				sender.sendMessage(ChatColor.RED+cmdchar+"reser set kickmsg <message>   "+ChatColor.BLUE+"Changes the kick-message");
-				sender.sendMessage(ChatColor.RED+cmdchar+"reser set serverfullmsg <message>   "+ChatColor.BLUE+"Changes the message if the server is full");
 				sender.sendMessage(ChatColor.RED+cmdchar+"reser set sorrymsg <message> "+ChatColor.BLUE+"Changes the message if a someone can't join.");
 			}else if(args[0].equalsIgnoreCase("set")){
 				if(args.length < 2){
 					sender.sendMessage(ChatColor.WHITE+"Reservations Help Message");
 					sender.sendMessage(ChatColor.RED+cmdchar+"reser set kickmsg <message> "+ChatColor.BLUE+"Changes the kick message.");
-					sender.sendMessage(ChatColor.RED+cmdchar+"reser set serverfullmsg <message> "+ChatColor.BLUE+"Changes the message if the server is full.");
 					sender.sendMessage(ChatColor.RED+cmdchar+"reser set sorrymsg <message> "+ChatColor.BLUE+"Changes the message if someone can't join.");
 				}else if(args[1].equalsIgnoreCase("kickmsg")){
 					if(!has(sender, "Reservations.set.kickmsg")){
@@ -170,20 +173,6 @@ public class Reservations extends JavaPlugin{
 					sender.sendMessage(ChatColor.GREEN+"Sorry-Message set to:");
 					sender.sendMessage(getLastString(args, 2));
 					return true;
-				}else if(args[1].equalsIgnoreCase("serverfullmsg")){
-					if(!has(sender, "Reservations.set.serverfullmsg")){
-						pc.sendNoPermMsg(player);
-						return true;
-					}
-					if(args.length < 3){
-						sender.sendMessage(ChatColor.RED+"Please enter a message:");
-						sender.sendMessage(ChatColor.RED+cmdchar+"reser set serverfullmsg <message>");
-						return true;
-					}
-					setServerFull(getLastString(args, 2));
-					sender.sendMessage(ChatColor.GREEN+"Server-Full-Message set to:");
-					sender.sendMessage(getLastString(args, 2));
-					return true;
 				}
 			}else if(args[0].equalsIgnoreCase("list")){
 				if(!has(sender, "Reservations.list")){
@@ -203,6 +192,7 @@ public class Reservations extends JavaPlugin{
 					return true;
 				}
 				vips.add(args[1].toLowerCase());
+				reloadConfig();
 				getConfig().set("VIPs", vips);
 				saveConfig();
 				sender.sendMessage(ChatColor.GREEN+"Successfully added "+ChatColor.GOLD+args[1]+ChatColor.GREEN+" to the VIP list.");
@@ -242,7 +232,7 @@ public class Reservations extends JavaPlugin{
 	
 	/**
 	 * Check if a player is defined as VIP in the config
-	 * @param name The palyer name
+	 * @param name The player name
 	 * @return Is he defined as VIP in the config?
 	 */
 	private boolean isVIPDefined(String name){
@@ -266,22 +256,13 @@ public class Reservations extends JavaPlugin{
 	}
 	
 	/**
-	 * Set the server full message
-	 * @param message The new server full message
-	 */
-	private void setServerFull(String message){
-		reloadConfig();
-		getConfig().set("ServerFullMsg", message);
-		saveConfig();
-	}
-	
-	/**
 	 * Set the kick message
 	 * @param message The new kick message
 	 */
 	private void setKickMsg(String message){
 		reloadConfig();
 		getConfig().set("KickMsg", message);
+		kickMsg = getConfig().getString("KickMsg");
 		saveConfig();
 	}
 	
@@ -292,6 +273,7 @@ public class Reservations extends JavaPlugin{
 	private void setSorryMsg(String message){
 		reloadConfig();
 		getConfig().set("SorryMsg", message);
+		kickMsg = getConfig().getString("KickMsg");
 		saveConfig();
 	}
 	
@@ -341,16 +323,15 @@ public class Reservations extends JavaPlugin{
 	 * @param joining The joining player
 	 * @return A player that could be kicked or null if no one could be kicked
 	 */
-	Player generateKickPlayer(Player joining){
+	protected Player generateKickPlayer(Player joining){
 		Map<String, Integer> unsortedmap = new HashMap<String, Integer>();
 		Player[] players = getServer().getOnlinePlayers();
 		for(Player player : players){
 			if(!isVIP(player))
 				unsortedmap.put(player.getName(), getRank(player));
 		}
-		if(unsortedmap.size() == 0){
+		if(unsortedmap.size() == 0)
 			return null;
-		}
 		ValueComparator bvc =  new ValueComparator(unsortedmap);
         @SuppressWarnings("unchecked")
 		TreeMap<String, Integer> sortedmap = new TreeMap<String, Integer>(bvc);
@@ -378,14 +359,12 @@ public class Reservations extends JavaPlugin{
 	 * @return The rank of the player
 	 */
 	public int getRank(Player player){
-		if(usePEXRanks){
+		if(usePEXRanks)
 			return pc.pexmanager.getUser(player).getOptionInteger("rank", null, getConfig().getInt("defaultRank", 100));
-		}
 		for(int i = 0; i < permissionBasedRanks; i++){
 			if(pc.has(player, "Reservations.rank."+(i+1)))
 				return i+1;
 		}
-		reloadConfig();
 		return getConfig().getInt("Ranks." + player, getConfig().getInt("defaultRank", 100));
 	}
 	
@@ -403,4 +382,43 @@ public class Reservations extends JavaPlugin{
 			return true;
 	}
 	
+	/**
+	 * Get the message that should be broadcasted when a player is kicked
+	 * @return A message as String without color formatting
+	 */
+	public String getBroadcastMsg(){
+		return broadcastMsg;
+	}
+	
+	/**
+	 * Get the message the player should receive when he can't join
+	 * @return A message as String without color formatting
+	 */
+	public String getSorryMsg(){
+		return sorryMsg;
+	}
+	
+	/**
+	 * Get the message the player should receive when he is kicked
+	 * @return A message as String without color formatting
+	 */
+	public String getKickMsg(){
+		return kickMsg;
+	}
+	
+	/**
+	 * Check if the login from another computer should be prevented
+	 * @return Should it be prevented?
+	 */
+	public boolean getPreventKickFromAnotherLocationLogin(){
+		return preventKickFromAnotherLocationLogin;
+	}
+	
+	/**
+	 * Get the message that should the player receive that tries to login from another computer
+	 * @return A message as String without color formatting
+	 */
+	public String getLoginFromAnotherLocationMessage(){
+		return loginFromAnotherLocationMessage;
+	}
 }

@@ -80,10 +80,23 @@ public class RSPL implements Listener{
 			}
 		}
 	}
-	
+
+	/**
+	 * Handle the player login process and kick if necessary another player
+	 * @param event The applicable PlayerLoginEvent
+	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerLogin(PlayerLoginEvent event){
-		if(event.getResult() != Result.ALLOWED&&event.getResult() != Result.KICK_FULL)
+		if(event.getResult() == Result.ALLOWED){
+			if(plugin.getPreventKickFromAnotherLocationLogin()){
+				if(event.getPlayer().isOnline()){
+					event.setResult(Result.KICK_OTHER);
+					event.setKickMessage(fm(plugin.getLoginFromAnotherLocationMessage()));
+				}
+			}
+			return;
+		}
+		if(event.getResult() != Result.KICK_FULL)
 			return;
 		Player player = event.getPlayer();
 		if(player.isBanned())
@@ -95,16 +108,25 @@ public class RSPL implements Listener{
 			}else{
 				final Player kick = plugin.generateKickPlayer(player);
 				if(kick != null){
-					kick.kickPlayer(plugin.getConfig().getString("KickMsg", "Someone with a higher rank joined you were randomly selected for kicking.").replaceAll("&([0-9a-fk-or])", "\u00A7$1"));
-					if(plugin.getConfig().getString("Broadcast").trim().length() != 0)
-						Bukkit.getServer().broadcastMessage(plugin.getConfig().getString("Broadcast").replaceAll("&([0-9a-fk-or])", "\u00A7$1").replaceAll("%lowerrank%", kick.getDisplayName()).replaceAll("%higherrank%", player.getDisplayName()));
+					kick.kickPlayer(fm(plugin.getKickMsg()));
+					if(plugin.getBroadcastMsg().trim().length() != 0)
+						Bukkit.getServer().broadcastMessage(fm(plugin.getBroadcastMsg().replaceAll("%lowerrank%", kick.getDisplayName()).replaceAll("%higherrank%", player.getDisplayName())));
 					event.allow();
 					return;
 				}else{
 					plugin.getLogger().log(Level.INFO, event.getPlayer().getDisplayName() + " wants to join but it was disabled, because " + event.getPlayer().getDisplayName() + "'s rank is too low or the server is full with VIPs.");
-					event.disallow(Result.KICK_FULL, plugin.getConfig().getString("SorryMsg").replaceAll("&([0-9a-fk-or])", "\u00A7$1"));
+					event.disallow(Result.KICK_FULL, fm(plugin.getSorryMsg()));
 				}
 			}
 		}
+	}
+	
+	/**
+	 * Format the color formatting codes in a String
+	 * @param t The String that should be formatted
+	 * @return The formatted String
+	 */
+	private String fm(String t){
+		return t.replaceAll("&([0-9a-fk-or])", "\u00A7$1");
 	}
 }
