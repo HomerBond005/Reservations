@@ -134,17 +134,17 @@ public class Reservations extends JavaPlugin{
 				cmdchar = "/";
 			}
 			if(args[0].equalsIgnoreCase("help")){
-				sender.sendMessage(ChatColor.WHITE+"Reservations Help");
-				sender.sendMessage(ChatColor.RED+cmdchar+"reser list   "+ChatColor.BLUE+"Lists all VIPs.");
-				sender.sendMessage(ChatColor.RED+cmdchar+"reser add <player>   "+ChatColor.BLUE+"Adds a player to VIPs.");
-				sender.sendMessage(ChatColor.RED+cmdchar+"reser delete <player>   "+ChatColor.BLUE+"Deletes a player from VIPs");
-				sender.sendMessage(ChatColor.RED+cmdchar+"reser set kickmsg <message>   "+ChatColor.BLUE+"Changes the kick-message");
-				sender.sendMessage(ChatColor.RED+cmdchar+"reser set sorrymsg <message> "+ChatColor.BLUE+"Changes the message if a someone can't join.");
+				sender.sendMessage(ChatColor.GOLD+""+ChatColor.BOLD+"Reservations Help");
+				sender.sendMessage(ChatColor.GOLD+cmdchar+"reser list   "+ChatColor.GRAY+"Lists all VIPs.");
+				sender.sendMessage(ChatColor.GOLD+cmdchar+"reser add <player>   "+ChatColor.GRAY+"Adds a player to VIPs.");
+				sender.sendMessage(ChatColor.GOLD+cmdchar+"reser delete <player>   "+ChatColor.GRAY+"Deletes a player from VIPs");
+				sender.sendMessage(ChatColor.GOLD+cmdchar+"reser set kickmsg <message>   "+ChatColor.GRAY+"Changes the kick-message");
+				sender.sendMessage(ChatColor.GOLD+cmdchar+"reser set sorrymsg <message> "+ChatColor.GRAY+"Changes the message if a someone can't join.");
 			}else if(args[0].equalsIgnoreCase("set")){
 				if(args.length < 2){
-					sender.sendMessage(ChatColor.WHITE+"Reservations Help Message");
-					sender.sendMessage(ChatColor.RED+cmdchar+"reser set kickmsg <message> "+ChatColor.BLUE+"Changes the kick message.");
-					sender.sendMessage(ChatColor.RED+cmdchar+"reser set sorrymsg <message> "+ChatColor.BLUE+"Changes the message if someone can't join.");
+					sender.sendMessage(ChatColor.GOLD+""+ChatColor.BOLD+"Reservations Help Message");
+					sender.sendMessage(ChatColor.GOLD+cmdchar+"reser set kickmsg <message> "+ChatColor.GRAY+"Changes the kick message.");
+					sender.sendMessage(ChatColor.GOLD+cmdchar+"reser set sorrymsg <message> "+ChatColor.GRAY+"Changes the message if someone can't join.");
 				}else if(args[1].equalsIgnoreCase("kickmsg")){
 					if(!has(sender, "Reservations.set.kickmsg")){
 						pc.sendNoPermMsg(player);
@@ -211,7 +211,7 @@ public class Reservations extends JavaPlugin{
 					sender.sendMessage(ChatColor.GREEN+"Successfully deleted "+ChatColor.GOLD+args[1]+ChatColor.GREEN+" from the VIP list.");
 				}else{
 					sender.sendMessage(ChatColor.RED+"The player "+ChatColor.GOLD+args[1]+ChatColor.RED+" isn't a VIP!");
-					sender.sendMessage(ChatColor.RED+"If the player has the permission,you have to delete it manually");
+					sender.sendMessage(ChatColor.RED+"If the player has the permission, you have to delete it manually");
 				}
 			}
 		}
