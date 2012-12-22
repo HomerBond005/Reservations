@@ -21,6 +21,7 @@ import ru.tehkode.permissions.bukkit.PermissionsEx;
 public class Reservations extends JavaPlugin{
 	private RSPL playerlistener;
 	private boolean usePEXRanks;
+	private boolean kickLowestRank;
 	private PermissionsChecker pc;
 	private Metrics metrics;
 	private Logger log;
@@ -47,8 +48,9 @@ public class Reservations extends JavaPlugin{
 		getConfig().addDefault("Permissions", true);
 		getConfig().addDefault("PEXRankSystem", false);
 		getConfig().addDefault("defaultRank", 100);
+		getConfig().addDefault("kickLowestRank", false);
 		getConfig().addDefault("permissionBasedRanks", 10);
-		getConfig().addDefault("Broadcast", "[Reservations]: %lowerrank% have been kicked because %higherrank% joined.");
+		getConfig().addDefault("Broadcast", "[Reservations]: %lowerrank% has been kicked because %higherrank% joined.");
 		getConfig().addDefault("preventKickFromAnotherLocationLogin", true);
 		getConfig().addDefault("loginFromAnotherLocationMessage", "You are already logged in from another location!");
 		HashMap<String, Object> defaultRanks = new HashMap<String, Object>();
@@ -70,6 +72,7 @@ public class Reservations extends JavaPlugin{
 		for(String vip : getConfig().getStringList("VIPs")){
 			vips.add(vip.toLowerCase());
 		}
+		kickLowestRank = getConfig().getBoolean("kickLowestRank");
 		kickMsg = getConfig().getString("KickMsg");
 		sorryMsg = getConfig().getString("SorryMsg");
 		broadcastMsg = getConfig().getString("Broadcast");
@@ -336,11 +339,29 @@ public class Reservations extends JavaPlugin{
         @SuppressWarnings("unchecked")
 		TreeMap<String, Integer> sortedmap = new TreeMap<String, Integer>(bvc);
         sortedmap.putAll(unsortedmap);
-        int ownrank = getRank(joining);
+        int ownRank = getRank(joining);
         List<String> possiblekickplayers = new ArrayList<String>();
-        for(Entry<String, Integer> entry : sortedmap.entrySet()){
-        	if(entry.getValue() > ownrank){
-        		possiblekickplayers.add(entry.getKey());
+		if(!kickLowestRank)
+	        for(Entry<String, Integer> entry : sortedmap.entrySet()){
+	        	if(entry.getValue() > ownRank){
+	        		possiblekickplayers.add(entry.getKey());
+	        	}
+	        }
+        else{
+        	int firstRank = -1;
+        	for(Entry<String, Integer> entry : sortedmap.entrySet()){
+        		if(firstRank == -1)
+        			firstRank = entry.getValue();
+        		if(ownRank >= entry.getValue())
+        			break;
+        		else if(ownRank < entry.getValue()){
+    				if(firstRank == entry.getValue())
+    					possiblekickplayers.add(entry.getKey());
+    				else if(possiblekickplayers.size() == 0)
+    					firstRank = entry.getValue();
+    				else
+    					break;
+    			}
         	}
         }
         if(sortedmap.size() == 0){
