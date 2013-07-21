@@ -13,19 +13,20 @@ import java.util.Map;
  * Compare Map<String, Integer>
  */
 @SuppressWarnings("rawtypes")
-class ValueComparator implements Comparator{
+class ValueComparator implements Comparator {
 	Map<String, Integer> base;
 
-	public ValueComparator(Map<String, Integer> base){
+	public ValueComparator(Map<String, Integer> base) {
 		this.base = base;
 	}
 
-	public int compare(Object a, Object b){
-		if(base.get(a) < base.get(b)){
+	@Override
+	public int compare(Object a, Object b) {
+		if (base.get(a) < base.get(b)) {
 			return 1;
-		}else if(base.get(a) == base.get(b)){
+		} else if (base.get(a) == base.get(b)) {
 			return 0;
-		}else{
+		} else {
 			return -1;
 		}
 	}

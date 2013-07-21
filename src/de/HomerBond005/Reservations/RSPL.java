@@ -7,6 +7,7 @@
 package de.HomerBond005.Reservations;
 
 import java.util.logging.Level;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -17,64 +18,68 @@ import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerLoginEvent.Result;
 import org.bukkit.event.server.ServerCommandEvent;
 
-import de.HomerBond005.Reservations.Reservations;
+public class RSPL implements Listener {
+	private final Reservations plugin;
 
-public class RSPL implements Listener{
-	private Reservations plugin;
-	
 	public RSPL(Reservations reservations) {
 		plugin = reservations;
 	}
-	
+
 	@EventHandler(priority = EventPriority.HIGHEST)
-	public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event){
-		if(event.isCancelled())
+	public void onPlayerCommandPreprocess(PlayerCommandPreprocessEvent event) {
+		if (event.isCancelled())
 			return;
 		String command = event.getMessage().substring(1).split(" ")[0];
-		if(command.equalsIgnoreCase("res")){
-			if(Bukkit.getServer().getPluginCommand("res") == null){
+		if (command.equalsIgnoreCase("res")) {
+			if (Bukkit.getServer().getPluginCommand("res") == null) {
 				event.setMessage(event.getMessage().replaceFirst("res", "reservations"));
 				return;
 			}
-		}if(command.equalsIgnoreCase("reser")){
-			if(Bukkit.getServer().getPluginCommand("reser") == null){
+		}
+		if (command.equalsIgnoreCase("reser")) {
+			if (Bukkit.getServer().getPluginCommand("reser") == null) {
 				event.setMessage(event.getMessage().replaceFirst("reser", "reservations"));
 				return;
 			}
-		}if(command.split(" ")[0].equalsIgnoreCase("reserv")){
-			if(Bukkit.getServer().getPluginCommand("reserv") == null){
+		}
+		if (command.split(" ")[0].equalsIgnoreCase("reserv")) {
+			if (Bukkit.getServer().getPluginCommand("reserv") == null) {
 				event.setMessage(event.getMessage().replaceFirst("reserv", "reservations"));
 				return;
 			}
-		}if(command.split(" ")[0].equalsIgnoreCase("reserve")){
-			if(Bukkit.getServer().getPluginCommand("reserve") == null){
+		}
+		if (command.split(" ")[0].equalsIgnoreCase("reserve")) {
+			if (Bukkit.getServer().getPluginCommand("reserve") == null) {
 				event.setMessage(event.getMessage().replaceFirst("reserve", "reservations"));
 				return;
 			}
 		}
 	}
-	
+
 	@EventHandler(priority = EventPriority.HIGHEST)
-	public void onServerCommand(ServerCommandEvent event){
-		if(event.getCommand().trim().length() == 0)
+	public void onServerCommand(ServerCommandEvent event) {
+		if (event.getCommand().trim().length() == 0)
 			return;
-		if(event.getCommand().split(" ")[0].equalsIgnoreCase("res")){
-			if(Bukkit.getServer().getPluginCommand("res") == null){
+		if (event.getCommand().split(" ")[0].equalsIgnoreCase("res")) {
+			if (Bukkit.getServer().getPluginCommand("res") == null) {
 				event.setCommand(event.getCommand().replaceFirst("res", "reservations"));
 				return;
 			}
-		}if(event.getCommand().split(" ")[0].equalsIgnoreCase("reser")){
-			if(Bukkit.getServer().getPluginCommand("reser") == null){
+		}
+		if (event.getCommand().split(" ")[0].equalsIgnoreCase("reser")) {
+			if (Bukkit.getServer().getPluginCommand("reser") == null) {
 				event.setCommand(event.getCommand().replaceFirst("reser", "reservations"));
 				return;
 			}
-		}if(event.getCommand().split(" ")[0].equalsIgnoreCase("reserv")){
-			if(Bukkit.getServer().getPluginCommand("reserv") == null){
+		}
+		if (event.getCommand().split(" ")[0].equalsIgnoreCase("reserv")) {
+			if (Bukkit.getServer().getPluginCommand("reserv") == null) {
 				event.setCommand(event.getCommand().replaceFirst("reserv", "reservations"));
 				return;
 			}
-		}if(event.getCommand().split(" ")[0].equalsIgnoreCase("reserve")){
-			if(Bukkit.getServer().getPluginCommand("reserve") == null){
+		}
+		if (event.getCommand().split(" ")[0].equalsIgnoreCase("reserve")) {
+			if (Bukkit.getServer().getPluginCommand("reserve") == null) {
 				event.setCommand(event.getCommand().replaceFirst("reserve", "reservations"));
 				return;
 			}
@@ -83,50 +88,52 @@ public class RSPL implements Listener{
 
 	/**
 	 * Handle the player login process and kick if necessary another player
+	 * 
 	 * @param event The applicable PlayerLoginEvent
 	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
-	public void onPlayerLogin(PlayerLoginEvent event){
-		if(event.getResult() == Result.ALLOWED){
-			if(plugin.getPreventKickFromAnotherLocationLogin()){
-				if(event.getPlayer().isOnline()){
+	public void onPlayerLogin(PlayerLoginEvent event) {
+		if (event.getResult() == Result.ALLOWED) {
+			if (plugin.getPreventKickFromAnotherLocationLogin()) {
+				if (event.getPlayer().isOnline()) {
 					event.setResult(Result.KICK_OTHER);
 					event.setKickMessage(fm(plugin.getLoginFromAnotherLocationMessage()));
 				}
 			}
 			return;
 		}
-		if(event.getResult() != Result.KICK_FULL)
+		if (event.getResult() != Result.KICK_FULL)
 			return;
 		Player player = event.getPlayer();
-		if(player.isBanned())
+		if (player.isBanned())
 			return;
-		if(plugin.getServer().getOnlinePlayers().length >= plugin.getServer().getMaxPlayers()){
-			if(plugin.isVIP(player)){
+		if (plugin.getServer().getOnlinePlayers().length >= plugin.getServer().getMaxPlayers()) {
+			if (plugin.isVIP(player)) {
 				event.allow();
 				return;
-			}else{
+			} else {
 				final Player kick = plugin.generateKickPlayer(player);
-				if(kick != null){
+				if (kick != null) {
 					kick.kickPlayer(fm(plugin.getKickMsg()));
-					if(plugin.getBroadcastMsg().trim().length() != 0)
+					if (plugin.getBroadcastMsg().trim().length() != 0)
 						Bukkit.getServer().broadcastMessage(fm(plugin.getBroadcastMsg().replaceAll("%lowerrank%", kick.getDisplayName()).replaceAll("%higherrank%", player.getDisplayName())));
 					event.allow();
 					return;
-				}else{
+				} else {
 					plugin.getLogger().log(Level.INFO, event.getPlayer().getDisplayName() + " wants to join but it was disabled, because " + event.getPlayer().getDisplayName() + "'s rank is too low or the server is full with VIPs.");
 					event.disallow(Result.KICK_FULL, fm(plugin.getSorryMsg()));
 				}
 			}
 		}
 	}
-	
+
 	/**
 	 * Format the color formatting codes in a String
+	 * 
 	 * @param t The String that should be formatted
 	 * @return The formatted String
 	 */
-	private String fm(String t){
+	private String fm(String t) {
 		return t.replaceAll("&([0-9a-fk-or])", "\u00A7$1");
 	}
 }
