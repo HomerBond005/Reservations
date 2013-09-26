@@ -1,8 +1,8 @@
 name: Reservations
-main: de.HomerBond005.Reservations.Reservations
+main: de.homerbond005.reservations.Reservations
 author: HomerBond005
-version: 2.4.1
-softdepend: [PermissionsEx, bPermissions, GroupManager, Vault]
+version: '@PROJECT_VERSION@'
+softdepend: [PermissionsEx]
 commands:
     reservations:
         description: Main Command.
