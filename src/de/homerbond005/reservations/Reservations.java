@@ -8,6 +8,7 @@ package de.homerbond005.reservations;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -23,10 +24,11 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.mcstats.Metrics;
+import org.mcstats.Metrics.Graph;
 
 import ru.tehkode.permissions.PermissionManager;
 import ru.tehkode.permissions.bukkit.PermissionsEx;
-import de.homerbond005.reservations.Metrics.Graph;
 
 public class Reservations extends JavaPlugin {
 	private RSPL playerlistener;
@@ -346,7 +348,7 @@ public class Reservations extends JavaPlugin {
 	 */
 	protected Player generateKickPlayer(Player joining) {
 		Map<String, Integer> unsortedmap = new HashMap<String, Integer>();
-		Player[] players = getServer().getOnlinePlayers();
+		Collection<? extends Player> players = getServer().getOnlinePlayers();
 		for (Player player : players) {
 			if (!isVIP(player))
 				unsortedmap.put(player.getName(), getRank(player));

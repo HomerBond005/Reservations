@@ -108,7 +108,7 @@ public class RSPL implements Listener {
 		Player player = event.getPlayer();
 		if (player.isBanned())
 			return;
-		if (plugin.getServer().getOnlinePlayers().length >= plugin.getServer().getMaxPlayers()) {
+		if (plugin.getServer().getOnlinePlayers().size() >= plugin.getServer().getMaxPlayers()) {
 			if (plugin.isVIP(player)) {
 				event.allow();
 				return;
